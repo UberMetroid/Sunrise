@@ -1,6 +1,6 @@
 // File: linux/src/main.rs
 // Title: Sunrise Linux Server & Comprehensive CLI Dispatcher
-// Plain English: Command-line interface with depot downloader, proxy hook, and server runtime.
+// Plain English: Command-line interface with container support, proxy hook, and server runtime.
 
 use std::env;
 use std::path::PathBuf;
@@ -38,8 +38,6 @@ fn print_usage(prog: &str) {
     println!("  test                              Run cryptographic & protocol self-test diagnostics");
     println!("  version | -v | --version          Print version information");
     println!("  help | -h | --help                Display this help overview\n");
-    println!("Proton Steam Launch Option:");
-    println!("  WINEDLLOVERRIDES=\"steam_api64=n,b\" %command%\n");
 }
 
 fn run_install(args: &[String]) -> bool {
@@ -95,9 +93,7 @@ fn run_install(args: &[String]) -> bool {
         for inst in &installations {
             animate_spinner("Retrieving Project Sunrise steam_api64.dll proxy core...", 800);
             match ModInstaller::ensure_proxy_hook(inst) {
-                Ok(dest) => {
-                    log_ok("PROXY CORE", &format!("Installed hook -> {}", dest.display()));
-                }
+                Ok(dest) => log_ok("PROXY CORE", &format!("Installed hook -> {}", dest.display())),
                 Err(e) => eprintln!("[-] Failed to install proxy hook: {}", e),
             }
             if let Ok(_) = ModInstaller::backup_and_bypass_launcher(inst) {
@@ -137,9 +133,7 @@ fn run_install(args: &[String]) -> bool {
 fn run_uninstall() -> bool {
     let results = Uninstaller::restore_all_game_files();
     for (path, restored) in results {
-        if restored {
-            log_ok("RESTORED", &format!("Original steam_api64.dll in {}", path));
-        }
+        if restored { log_ok("RESTORED", &format!("Original steam_api64.dll in {}", path)); }
     }
     let _ = Uninstaller::remove_desktop_integration();
     print_uninstall_complete();
@@ -163,25 +157,18 @@ fn run_index(custom_path: Option<String>) -> bool {
     println!("[*] Scanning package vault: {}", packages_path.display());
     if let Ok(idx) = PackageIndex::scan_directory(&packages_path) {
         let dirs = SunriseDirectories::default_paths();
-        let cache_file = dirs.cache_dir.join("package_index.json");
-        let _ = idx.save_to_cache(&cache_file);
+        let _ = idx.save_to_cache(&dirs.cache_dir.join("package_index.json"));
         println!("[+] Indexed {} package files (Total Size: {} bytes)", idx.total_packages, idx.total_bytes);
         true
-    } else {
-        false
-    }
+    } else { false }
 }
 
 fn run_self_tests() -> bool {
     println!("[*] Running Sunrise Linux Self-Test Diagnostics...");
-    let payload = vec![0xDE, 0xAD, 0xBE, 0xEF];
-    let frame = BapFrame::new(42, Opcode::Signon, payload.clone());
-    let encoded = frame.to_bytes().unwrap();
-    assert_eq!(&encoded[..4], &BAP_MAGIC);
-
+    let frame = BapFrame::new(42, Opcode::Signon, vec![0xDE, 0xAD, 0xBE, 0xEF]);
+    assert_eq!(&frame.to_bytes().unwrap()[..4], &BAP_MAGIC);
     let gear = GearSlots::new(750, 750, 750, 750, 750, 750, 750, 750);
     assert_eq!(calculate_base_light(&gear), 750);
-
     let digest = sha256_hex(b"sunrise");
     assert_eq!(digest, "e9f2a0186210e30a516d12b001717fc17b1887acad69faf5c2141067f3f6b094");
     println!("[✓] All self-tests passed successfully!");
@@ -198,13 +185,10 @@ fn main() {
     }
 
     match args[1].as_str() {
-        "install" => {
-            if !run_install(&args) { process::exit(1); }
-        }
+        "install" => { if !run_install(&args) { process::exit(1); } }
         "depot" | "download" => {
             let target = args.get(2).map(PathBuf::from).unwrap_or_else(|| {
-                let installations = search_destiny2_installations();
-                installations.first().map(|i| i.game_root.clone()).unwrap_or_else(|| {
+                search_destiny2_installations().first().map(|i| i.game_root.clone()).unwrap_or_else(|| {
                     sunrise_linux::installer::steam_locator::get_home_dir()
                         .join(".local/share/Steam/steamapps/common/Destiny 2")
                 })
@@ -214,20 +198,16 @@ fn main() {
                 process::exit(1);
             }
         }
-        "uninstall" | "restore" => {
-            if !run_uninstall() { process::exit(1); }
-        }
+        "uninstall" | "restore" => { if !run_uninstall() { process::exit(1); } }
         "status" => { SunriseDoctor::check_status(); }
-        "doctor" | "check" => {
-            if !SunriseDoctor::run_diagnostics() { process::exit(1); }
-        }
-        "index" => {
-            let custom_path = args.get(2).cloned();
-            if !run_index(custom_path) { process::exit(1); }
-        }
+        "doctor" | "check" => { if !SunriseDoctor::run_diagnostics() { process::exit(1); } }
+        "index" => { if !run_index(args.get(2).cloned()) { process::exit(1); } }
         "server" => {
-            let bind_addr = args.get(2).cloned().unwrap_or_else(|| "127.0.0.1".to_string());
-            let port = args.get(3).and_then(|p| p.parse::<u16>().ok()).unwrap_or(7777);
+            let env_addr = env::var("SUNRISE_BIND_ADDRESS").or_else(|_| env::var("SUNRISE_BIND_ADDR"))
+                .unwrap_or_else(|_| "127.0.0.1".to_string());
+            let env_port = env::var("SUNRISE_PORT").ok().and_then(|p| p.parse::<u16>().ok()).unwrap_or(7777);
+            let bind_addr = args.get(2).cloned().unwrap_or(env_addr);
+            let port = args.get(3).and_then(|p| p.parse::<u16>().ok()).unwrap_or(env_port);
 
             let mut config = ServerConfig::default();
             config.bind_address = bind_addr.clone();
@@ -240,16 +220,9 @@ fn main() {
                 process::exit(1);
             }
         }
-        "test" => {
-            if !run_self_tests() { process::exit(1); }
-        }
-        "version" | "-v" | "--version" => {
-            println!("sunrise-linux v{}", SUNRISE_LINUX_VERSION);
-        }
+        "test" => { if !run_self_tests() { process::exit(1); } }
+        "version" | "-v" | "--version" => { println!("sunrise-linux v{}", SUNRISE_LINUX_VERSION); }
         "help" | "-h" | "--help" => { print_usage(prog); }
-        _ => {
-            print_usage(prog);
-            process::exit(1);
-        }
+        _ => { print_usage(prog); process::exit(1); }
     }
 }

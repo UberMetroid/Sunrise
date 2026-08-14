@@ -1,0 +1,28 @@
+# Project Sunrise - Docker Compose Configuration
+# Usage: docker compose up -d
+
+services:
+  sunrise-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: sunrise-linux:latest
+    container_name: sunrise-server
+    restart: unless-stopped
+    ports:
+      - "7777:7777"
+    environment:
+      - SUNRISE_BIND_ADDRESS=0.0.0.0
+      - SUNRISE_PORT=7777
+      - RUST_LOG=info
+    volumes:
+      - sunrise-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 7777 || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  sunrise-data:
+    name: sunrise-data
