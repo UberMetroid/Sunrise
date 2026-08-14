@@ -1,8 +1,9 @@
 // File: linux/src/installer/desktop_entry.rs
 // Title: Desktop Shortcut & systemd Service Generator
-// Plain English: Registers desktop entry and user service for the Sunrise BAP daemon.
+// Plain English: Registers desktop entry on ~/Desktop and user applications menu.
 
 use std::fs;
+use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
 
 use crate::error::{Result, SunriseError};
@@ -14,10 +15,11 @@ impl DesktopIntegration {
     pub fn install_desktop_entry(binary_path: impl AsRef<Path>) -> Result<()> {
         let home = get_home_dir();
         let apps_dir = home.join(".local").join("share").join("applications");
+        let desktop_dir = home.join("Desktop");
+
         fs::create_dir_all(&apps_dir)
             .map_err(|e| SunriseError::IoError(format!("Failed to create applications dir: {}", e)))?;
 
-        let desktop_file = apps_dir.join("sunrise-server.desktop");
         let content = format!(
             "[Desktop Entry]\n\
              Name=Sunrise Emulation Server\n\
@@ -29,8 +31,19 @@ impl DesktopIntegration {
             binary_path.as_ref().to_string_lossy()
         );
 
-        fs::write(desktop_file, content)
-            .map_err(|e| SunriseError::IoError(format!("Failed to write desktop entry: {}", e)))?;
+        // 1. Install to system applications menu
+        let menu_file = apps_dir.join("sunrise-server.desktop");
+        fs::write(&menu_file, &content)
+            .map_err(|e| SunriseError::IoError(format!("Failed to write menu entry: {}", e)))?;
+
+        // 2. Install directly to ~/Desktop if available
+        if desktop_dir.exists() {
+            let direct_desktop_file = desktop_dir.join("sunrise-server.desktop");
+            fs::write(&direct_desktop_file, &content)
+                .map_err(|e| SunriseError::IoError(format!("Failed to write desktop icon: {}", e)))?;
+            // Mark executable so Linux desktop environments can launch it directly
+            let _ = fs::set_permissions(&direct_desktop_file, fs::Permissions::from_mode(0o755));
+        }
 
         Ok(())
     }

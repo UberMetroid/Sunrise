@@ -80,6 +80,13 @@ mkdir -p "$LOCAL_BIN"
 ln -sf "$BUILD_DIR/target/release/sunrise-linux" "$LOCAL_BIN/sunrise-linux"
 echo -e "  ${CYAN}✦${RESET} ${WHITE}FOUNDRY LINK${RESET}: $LOCAL_BIN/sunrise-linux"
 
+# 6. Ensure ~/Desktop shortcut is updated if ~/Desktop exists
+if [ -d "$HOME/Desktop" ]; then
+    cp -f "$HOME/.local/share/applications/sunrise-server.desktop" "$HOME/Desktop/sunrise-server.desktop" 2>/dev/null || true
+    chmod +x "$HOME/Desktop/sunrise-server.desktop" 2>/dev/null || true
+    echo -e "  ${CYAN}✦${RESET} ${WHITE}DESKTOP ICON${RESET}: $HOME/Desktop/sunrise-server.desktop"
+fi
+
 echo ""
 echo -e "${GREEN}============================================${RESET}"
 echo -e "${GREEN}  TRANSMAT STATUS: READY                    ${RESET}"
