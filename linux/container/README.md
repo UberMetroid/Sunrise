@@ -6,17 +6,16 @@ A lightweight, high-performance, containerized emulation server for **Project Su
 
 ## ⚡ Quick Start (Docker Compose)
 
-The easiest way to self-host the server is with Docker Compose:
+Run the server with a single command from inside this directory:
 
 ```bash
-# 1. Clone the repository
-git clone https://github.com/UberMetroid/Sunrise.git
-cd Sunrise/linux
+# 1. Navigate to the container directory
+cd linux/container
 
-# 2. Start the container in background
+# 2. Build and launch the container in the background
 docker compose up -d
 
-# 3. View live server logs
+# 3. View live server telemetry
 docker compose logs -f
 ```
 
@@ -25,8 +24,8 @@ docker compose logs -f
 ## 🚀 Running with Docker CLI
 
 ```bash
-# Build the image locally
-docker build -t sunrise-linux:latest .
+# Build the image (from linux/ directory)
+docker build -f container/Dockerfile -t sunrise-linux:latest .
 
 # Run the container
 docker run -d \
@@ -42,7 +41,7 @@ docker run -d \
 ## 🦭 Running with Podman (Rootless)
 
 ```bash
-podman build -t sunrise-linux:latest .
+podman build -f container/Dockerfile -t sunrise-linux:latest .
 podman run -d \
   --name sunrise-server \
   -p 7777:7777 \
@@ -60,13 +59,3 @@ podman run -d \
 | `SUNRISE_BIND_ADDRESS` | `0.0.0.0` | IP interface to listen on (`0.0.0.0` for all LAN/WAN) |
 | `SUNRISE_PORT` | `7777` | TCP port for BAP protocol telemetry |
 | `RUST_LOG` | `info` | Log verbosity level (`info`, `debug`, `trace`) |
-
----
-
-## 🎮 Connecting Clients
-
-1. **Localhost:** If hosting on the same PC as your game client, Destiny 2 will connect directly to `127.0.0.1:7777`.
-2. **Dedicated Server / LAN Host:**
-   * Run the container on your server IP (e.g. `192.168.1.50`).
-   * Ensure port `7777` is open on your firewall.
-   * Forward client game traffic to your server IP or set up loopback routing.

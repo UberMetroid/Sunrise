@@ -23,7 +23,7 @@ LABEL description="Project Sunrise - Standalone Destiny 2 Emulation Server Conta
 
 # Create non-root sunrise user & data directory
 RUN addgroup -S sunrise && adduser -S sunrise -G sunrise \
-    && mkdir -p /data ~/.config/sunrise \
+    && mkdir -p /data \
     && chown -R sunrise:sunrise /data
 
 # Copy compiled binary from builder
