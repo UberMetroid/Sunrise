@@ -1,6 +1,6 @@
 // File: linux/src/tui/mod.rs
 // Title: Ratatui Animated TUI Installer Runner
-// Plain English: Initializes interactive terminal and runs animated Ghost installation.
+// Plain English: Handles keyboard navigation, component toggling, and installation lifecycle.
 
 pub mod app_state;
 pub mod ghost_art;
@@ -55,8 +55,31 @@ fn run_installer_loop(
                         state.should_exit = true;
                         return Ok(false);
                     }
-                    KeyCode::Enter if state.phase == InstallPhase::Finished => {
-                        return Ok(true);
+                    KeyCode::Up => {
+                        if state.phase == InstallPhase::SelectOptions {
+                            state.prev_option();
+                        }
+                    }
+                    KeyCode::Down | KeyCode::Tab => {
+                        if state.phase == InstallPhase::SelectOptions {
+                            state.next_option();
+                        }
+                    }
+                    KeyCode::Char(' ') => {
+                        if state.phase == InstallPhase::SelectOptions {
+                            state.toggle_selected();
+                        }
+                    }
+                    KeyCode::Enter => {
+                        if state.phase == InstallPhase::SelectOptions {
+                            if state.selected_option == 2 || state.selected_option == 0 || state.selected_option == 1 {
+                                state.phase = InstallPhase::InitialScan;
+                                state.add_speech("Components confirmed! Scanning local storage sectors...");
+                                step_tick = 0;
+                            }
+                        } else if state.phase == InstallPhase::Finished {
+                            return Ok(state.install_server);
+                        }
                     }
                     _ => {}
                 }
@@ -64,25 +87,28 @@ fn run_installer_loop(
         }
 
         state.advance_tick();
+
+        if state.phase == InstallPhase::SelectOptions {
+            continue;
+        }
+
         step_tick += 1;
 
-        // Drive installer steps across animation ticks
+        // Drive installation steps across animation ticks
         match state.phase {
+            InstallPhase::SelectOptions => {}
             InstallPhase::InitialScan => {
                 state.progress = (state.progress + 4).min(20);
-                if step_tick == 5 {
-                    state.add_speech("Searching local storage sectors for Destiny 2 package archives...");
-                }
                 if step_tick >= 10 {
                     let installations = search_destiny2_installations();
                     if let Some(first) = installations.first() {
                         state.game_path = first.game_root.display().to_string();
                         state.package_count = 126608;
                         state.add_event("VAULT LOCATED", &state.game_path.clone());
-                        state.add_speech("Found it! Your Destiny 2 package vault is intact. Linking archives...");
+                        state.add_speech("Found it! Your Destiny 2 package vault is intact.");
                     } else {
                         state.add_event("SECTOR STATUS", "No standard Destiny 2 install detected");
-                        state.add_speech("No game install found yet, but initializing your transponder anyway.");
+                        state.add_speech("No game install found yet, but initializing sandbox transponder.");
                     }
                     state.phase = InstallPhase::FoundVault;
                     step_tick = 0;
@@ -90,13 +116,15 @@ fn run_installer_loop(
             }
             InstallPhase::FoundVault => {
                 state.progress = (state.progress + 3).min(45);
-                if step_tick >= 10 {
-                    let installations = search_destiny2_installations();
-                    for inst in &installations {
-                        if let Ok(backup) = ModInstaller::backup_original_dll(inst) {
-                            state.add_event("CORE SAFEGUARD", &backup.display().to_string());
-                            state.add_speech("Backed up original steam_api64.dll. Files are completely safe.");
+                if step_tick >= 8 {
+                    if state.install_desktop_shortcut {
+                        let installations = search_destiny2_installations();
+                        for inst in &installations {
+                            if let Ok(backup) = ModInstaller::backup_original_dll(inst) {
+                                state.add_event("CORE SAFEGUARD", &backup.display().to_string());
+                            }
                         }
+                        state.add_speech("Backed up original steam_api64.dll safely.");
                     }
                     state.phase = InstallPhase::SecuringCore;
                     step_tick = 0;
@@ -104,26 +132,34 @@ fn run_installer_loop(
             }
             InstallPhase::SecuringCore => {
                 state.progress = (state.progress + 3).min(70);
-                if step_tick >= 10 {
-                    let dirs = SunriseDirectories::default_paths();
-                    let installations = search_destiny2_installations();
-                    let _ = dirs.initialize(installations.first().map(|i| i.game_root.as_path()));
-                    state.add_event("CONFIG LOCKED", &dirs.config_dir.display().to_string());
-                    state.add_event("BAP ENDPOINT", "127.0.0.1:7777");
-                    state.add_speech("Transponder initialized in ~/.config/sunrise with full DLC unlocks.");
+                if step_tick >= 8 {
+                    if state.install_server {
+                        let dirs = SunriseDirectories::default_paths();
+                        let installations = search_destiny2_installations();
+                        let _ = dirs.initialize(installations.first().map(|i| i.game_root.as_path()));
+                        state.add_event("CONFIG LOCKED", &dirs.config_dir.display().to_string());
+                        state.add_event("BAP ENDPOINT", "127.0.0.1:7777");
+                        state.add_speech("Transponder initialized in ~/.config/sunrise with DLC unlocks.");
+                    }
                     state.phase = InstallPhase::WritingConfig;
                     step_tick = 0;
                 }
             }
             InstallPhase::WritingConfig => {
                 state.progress = (state.progress + 3).min(90);
-                if step_tick >= 10 {
-                    if let Ok(current_exe) = env::current_exe() {
-                        let _ = DesktopIntegration::install_desktop_entry(&current_exe);
-                        let _ = DesktopIntegration::install_systemd_service(&current_exe);
-                        state.add_event("DESKTOP ICON", "~/Desktop/sunrise-server.desktop");
-                        state.add_event("SYSTEMD SERVICE", "sunrise.service");
-                        state.add_speech("Placed desktop shortcut and registered background service.");
+                if step_tick >= 8 {
+                    if state.install_desktop_shortcut {
+                        if let Ok(current_exe) = env::current_exe() {
+                            let _ = DesktopIntegration::install_desktop_entry(&current_exe);
+                            state.add_event("DESKTOP ICON", "~/Desktop/sunrise-server.desktop");
+                            state.add_event("START MENU", "~/.local/share/applications/sunrise-server.desktop");
+                        }
+                    }
+                    if state.install_server {
+                        if let Ok(current_exe) = env::current_exe() {
+                            let _ = DesktopIntegration::install_systemd_service(&current_exe);
+                            state.add_event("SYSTEMD SERVICE", "sunrise.service");
+                        }
                     }
                     state.phase = InstallPhase::DesktopSetup;
                     step_tick = 0;
@@ -132,7 +168,7 @@ fn run_installer_loop(
             InstallPhase::DesktopSetup => {
                 state.progress = 100;
                 state.phase = InstallPhase::Finished;
-                state.add_speech("All systems green, Guardian! Ready for transmat. Press [Enter] to launch.");
+                state.add_speech("All selected components installed, Guardian! Press [Enter] to launch or [Esc] to exit.");
             }
             InstallPhase::Finished => {}
         }
