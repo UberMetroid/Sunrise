@@ -1,35 +1,56 @@
 #!/usr/bin/env bash
 # File: linux/install.sh
-# Title: One-Step Sunrise Linux Installer Script
-# Plain English: Builds the binary, locates Destiny 2, and configures ~/.config/sunrise.
+# Title: Sunrise Linux One-Line Web & Local Installer Script
+# Plain English: Installs Sunrise on Linux from a local clone or via curl | bash.
 
 set -e
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-cd "$SCRIPT_DIR"
-
 echo "============================================"
-echo "  Project Sunrise - Linux One-Step Install  "
+echo "  Project Sunrise - Linux Installer         "
 echo "============================================"
 
 # 1. Check for Rust toolchain
 if ! command -v cargo &>/dev/null; then
-    echo "[-] Error: 'cargo' not found. Please install Rust: https://rustup.rs"
+    echo "[-] Error: 'cargo' not found."
+    echo "    Please install Rust first: https://rustup.rs"
     exit 1
 fi
 
-# 2. Build release binary
+# 2. Determine execution context (local checkout vs remote curl pipe)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd || echo "")"
+
+if [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/Cargo.toml" ]; then
+    # Running inside a local linux/ folder
+    BUILD_DIR="$SCRIPT_DIR"
+elif [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/linux/Cargo.toml" ]; then
+    # Running from the repository root
+    BUILD_DIR="$SCRIPT_DIR/linux"
+else
+    # Running via curl | bash (remote pipeline)
+    SUNRISE_REPO="${SUNRISE_REPO:-https://github.com/UberMetroid/Sunrise.git}"
+    SUNRISE_BRANCH="${SUNRISE_BRANCH:-master}"
+    BUILD_DIR="$HOME/.cache/sunrise-build/linux"
+
+    echo "[*] Downloading Sunrise from $SUNRISE_REPO ($SUNRISE_BRANCH)..."
+    rm -rf "$HOME/.cache/sunrise-build"
+    mkdir -p "$HOME/.cache/sunrise-build"
+    git clone --depth 1 --branch "$SUNRISE_BRANCH" "$SUNRISE_REPO" \
+        "$HOME/.cache/sunrise-build"
+fi
+
+# 3. Build release binary
 echo "[*] Compiling Sunrise Linux release binary..."
+cd "$BUILD_DIR"
 cargo build --release --quiet
 
-# 3. Run automated installation
+# 4. Run automated installation (Steam detection & .config setup)
 echo "[*] Detecting Steam, Destiny 2, and setting up ~/.config/sunrise..."
-./target/release/sunrise-linux install
+"$BUILD_DIR/target/release/sunrise-linux" install
 
-# 4. Optional: link binary to ~/.local/bin
+# 5. Link executable to ~/.local/bin
 LOCAL_BIN="$HOME/.local/bin"
 mkdir -p "$LOCAL_BIN"
-ln -sf "$SCRIPT_DIR/target/release/sunrise-linux" "$LOCAL_BIN/sunrise-linux"
+ln -sf "$BUILD_DIR/target/release/sunrise-linux" "$LOCAL_BIN/sunrise-linux"
 echo "[+] Linked executable to: $LOCAL_BIN/sunrise-linux"
 
 echo ""

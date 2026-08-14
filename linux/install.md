@@ -1,8 +1,18 @@
 # Sunrise Linux Installation & Usage Guide
 
-## Quick Start (One Step)
+## One-Line HTTPS Web Install
 
-Run the installer script:
+To install Project Sunrise on any Linux machine with a single terminal command:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/UberMetroid/Sunrise/master/linux/install.sh | bash
+```
+
+---
+
+## Local Installation (From Cloned Repo)
+
+If you already have this repository cloned locally:
 
 ```bash
 ./linux/install.sh
@@ -13,7 +23,16 @@ Or from inside the `linux` folder:
 cd linux && ./install.sh
 ```
 
-That is it! The script automatically compiles the release binary, searches your Steam libraries for Destiny 2, backs up original files, sets up `~/.config/sunrise/`, and links `sunrise-linux` to `~/.local/bin/`.
+---
+
+## What the Installer Does Automatically
+
+1. **Rust Toolchain Verification:** Checks for `cargo` and `rustc`.
+2. **Destiny 2 & Steam Scanning:** Detects game packages and binary directories in Steam libraries.
+3. **Configuration Setup:** Initializes `~/.config/sunrise/` adhering to the XDG Base Directory specification.
+4. **Safety Backup:** Backs up your original `steam_api64.dll` to `steam_api64_original.dll`.
+5. **Path Linking:** Creates a symlink at `~/.local/bin/sunrise-linux` so the binary is available globally.
+6. **Desktop & systemd Services:** Installs a desktop shortcut and user service for background execution.
 
 ---
 
@@ -40,7 +59,7 @@ systemctl --user stop sunrise
 
 ## Diagnostics & Testing
 
-To verify integrity and run tests:
+To verify integrity and run self-tests:
 ```bash
 sunrise-linux test
 ```
@@ -52,10 +71,20 @@ cd linux && cargo test
 
 ---
 
-## Configuration
+## Configuration Reference
 
-Settings are saved in `~/.config/sunrise/config.json`:
-- `bind_address`: `"127.0.0.1"`
-- `port`: `7777`
-- `enable_queuez`: `true`
-- `auto_unlock_entitlements`: `true`
+Settings are stored at `~/.config/sunrise/config.json`:
+
+```json
+{
+  "version": "0.2.6",
+  "server": {
+    "bind_address": "127.0.0.1",
+    "port": 7777,
+    "enable_queuez": true,
+    "max_connections": 64
+  },
+  "auto_unlock_entitlements": true,
+  "default_power_cap": 1000
+}
+```
