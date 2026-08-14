@@ -6,11 +6,13 @@
 set -e
 trap 'rm -rf "${CLONE_DIR:-/tmp/empty}" 2>/dev/null; exit 1' ERR
 
-# Parse --yes / -y for non-interactive (curl | bash)
+# Parse --yes / -y and --with-manifest for non-interactive (curl | bash)
 ASSUME_YES=0
+WITH_MANIFEST=0
 for arg in "$@"; do
     case "$arg" in
         -y|--yes) ASSUME_YES=1 ;;
+        --with-manifest) WITH_MANIFEST=1 ;;
     esac
 done
 
@@ -163,6 +165,16 @@ if [ "$ASSUME_YES" = 1 ]; then
     "$BUILD_DIR/target/release/sunrise-linux" install --yes
 else
     "$BUILD_DIR/target/release/sunrise-linux" install
+fi
+
+# 6. Optional: fetch public Bungie manifest (anonymous, no account, opt-in only)
+if [ "$WITH_MANIFEST" = 1 ]; then
+    echo -e "\n${CYAN}[MANIFEST]${RESET} ${WHITE}Syncing public Bungie manifest (anonymous, no account)...${RESET}"
+    if "$BUILD_DIR/target/release/sunrise-linux" sync-manifest 2>&1 | tee /tmp/sunrise-manifest.log; then
+        echo -e "  ${GREEN}[  OK  ]${RESET} Manifest sync complete"
+    else
+        echo -e "  ${YELLOW}[ WARN ]${RESET} Manifest sync failed — server still boots from local vault"
+    fi
 fi
 
 echo -e "${GREEN}=======================================================================${RESET}"

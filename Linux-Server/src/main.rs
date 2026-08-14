@@ -29,6 +29,7 @@ fn print_usage(prog: &str) {
     println!("Usage: {} <COMMAND> [OPTIONS]\n", prog);
     println!("Commands:");
     println!("  install [--yes / -y]              Interactive installer (proxy hook + launcher bypass)");
+    println!("  sync-manifest                     Fetch public Bungie manifest (anonymous, opt-in, no account)");
     println!("  server [bind_address] [port]      Start the BAP emulation server (default: 127.0.0.1:7777)");
     println!("                                   Env: SUNRISE_BIND_ADDRESS, SUNRISE_PORT, SUNRISE_UDP_BIND, SUNRISE_UDP_PORT (default udp: 7778)");
     println!("  depot | download [target_dir]     Download legacy Destiny 2 depot archives via Steam");
@@ -187,6 +188,16 @@ fn main() {
 
     match args[1].as_str() {
         "install" => { if !run_install(&args) { process::exit(1); } }
+        "sync-manifest" => {
+            println!("[*] Syncing public Bungie manifest (anonymous, no account)...");
+            match sunrise_linux::manifest::manifest_downloader::ManifestDownloader::sync_remote_manifest() {
+                Ok(store) => println!("[✓] Manifest sync: {} items cached", store.items.len()),
+                Err(e) => {
+                    eprintln!("[-] Manifest sync failed: {}", e);
+                    process::exit(1);
+                }
+            }
+        }
         "depot" | "download" => {
             let target = args.get(2).map(PathBuf::from).unwrap_or_else(|| {
                 search_destiny2_installations().first().map(|i| i.game_root.clone()).unwrap_or_else(|| {
