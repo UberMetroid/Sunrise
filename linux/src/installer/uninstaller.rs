@@ -17,8 +17,9 @@ impl Uninstaller {
 
         for inst in &installations {
             let path_str = inst.game_root.display().to_string();
-            let restored = ModInstaller::restore_original_dll(inst).is_ok();
-            results.push((path_str, restored));
+            let dll_restored = ModInstaller::restore_original_dll(inst).is_ok();
+            let _ = ModInstaller::restore_launcher(inst);
+            results.push((path_str, dll_restored));
         }
 
         results

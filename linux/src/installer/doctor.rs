@@ -68,12 +68,25 @@ impl SunriseDoctor {
                     log_scan("PROXY HOOK", "Vanilla DLL active (run 'sunrise-linux install')");
                 }
             }
+
+            // 3. Check BattlEye Launcher Bypass
+            let launcher_path = first.game_root.join("destiny2launcher.exe");
+            let game_exe_path = first.game_root.join("destiny2.exe");
+            if launcher_path.exists() && game_exe_path.exists() {
+                let l_len = launcher_path.metadata().map(|m| m.len()).unwrap_or(0);
+                let g_len = game_exe_path.metadata().map(|m| m.len()).unwrap_or(0);
+                if l_len == g_len && g_len > 1_000_000 {
+                    log_ok("LAUNCHER BYPASS", "BattlEye bypassed (destiny2.exe active)");
+                } else {
+                    log_scan("LAUNCHER BYPASS", "Vanilla launcher active (run install)");
+                }
+            }
         } else {
             log_scan("DESTINY 2 VAULT", "No standard installation detected in Steam paths");
             all_healthy = false;
         }
 
-        // 3. Check ~/.config/sunrise Sandbox & Package Cache
+        // 4. Check ~/.config/sunrise Sandbox & Package Cache
         let dirs = SunriseDirectories::default_paths();
         if dirs.config_dir.exists() && dirs.config_file.exists() {
             log_ok("SANDBOX CONFIG", &dirs.config_file.display().to_string());
@@ -89,7 +102,7 @@ impl SunriseDoctor {
             log_info("PACKAGE INDEX", "Run 'sunrise-linux index' to cache package manifest");
         }
 
-        // 4. Check Start Menu Launchers & Icons
+        // 5. Check Start Menu Launchers & Icons
         let icon_file = home.join(".local/share/icons/hicolor/scalable/apps/sunrise.svg");
         let menu_game = home.join(".local/share/applications/destiny2-sunrise.desktop");
         let menu_server = home.join(".local/share/applications/sunrise-server.desktop");
@@ -106,7 +119,7 @@ impl SunriseDoctor {
             log_scan("START MENU", "Launchers not installed (run 'sunrise-linux install')");
         }
 
-        // 5. Check PATH environment
+        // 6. Check PATH environment
         let local_bin = home.join(".local/bin");
         let path_env = env::var("PATH").unwrap_or_default();
         if path_env.contains(&local_bin.to_string_lossy().to_string()) {
@@ -115,7 +128,7 @@ impl SunriseDoctor {
             log_scan("USER PATH", "~/.local/bin not in $PATH (add to ~/.bashrc)");
         }
 
-        // 6. Check Port Availability
+        // 7. Check Port Availability
         match TcpStream::connect("127.0.0.1:7777") {
             Ok(_) => {
                 log_ok("PORT 7777", "Active / Listening");

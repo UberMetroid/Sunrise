@@ -1,6 +1,6 @@
 // File: linux/src/installer/mod_installer.rs
-// Title: Client DLL Backup & Automated Hook Installer
-// Plain English: Backs up original steam_api64.dll and installs the Project Sunrise proxy hook.
+// Title: Client DLL & Anti-Cheat Launcher Bypass Manager
+// Plain English: Backs up original binaries, installs proxy hook, and bypasses BattlEye launcher.
 
 use std::env;
 use std::fs;
@@ -103,6 +103,44 @@ impl ModInstaller {
         let hook_src = Self::resolve_hook_dll()?;
         Self::install_hook_dll(paths, &hook_src)?;
         Ok(paths.steam_api_dll.clone())
+    }
+
+    pub fn backup_and_bypass_launcher(paths: &Destiny2Paths) -> Result<()> {
+        let launcher_exe = paths.game_root.join("destiny2launcher.exe");
+        let launcher_backup = paths.game_root.join("destiny2launcher_original.exe");
+        let game_exe = paths.game_root.join("destiny2.exe");
+
+        if !game_exe.exists() {
+            return Err(SunriseError::FileNotFound(
+                game_exe.to_string_lossy().to_string(),
+            ));
+        }
+
+        if launcher_exe.exists() && !launcher_backup.exists() {
+            fs::copy(&launcher_exe, &launcher_backup).map_err(|e| {
+                SunriseError::IoError(format!("Failed to backup destiny2launcher.exe: {}", e))
+            })?;
+        }
+
+        // Direct destiny2launcher.exe to execute destiny2.exe directly
+        fs::copy(&game_exe, &launcher_exe).map_err(|e| {
+            SunriseError::IoError(format!("Failed to bypass BattlEye launcher: {}", e))
+        })?;
+
+        Ok(())
+    }
+
+    pub fn restore_launcher(paths: &Destiny2Paths) -> Result<()> {
+        let launcher_exe = paths.game_root.join("destiny2launcher.exe");
+        let launcher_backup = paths.game_root.join("destiny2launcher_original.exe");
+
+        if launcher_backup.exists() {
+            fs::copy(&launcher_backup, &launcher_exe).map_err(|e| {
+                SunriseError::IoError(format!("Failed to restore destiny2launcher.exe: {}", e))
+            })?;
+        }
+
+        Ok(())
     }
 
     pub fn restore_original_dll(paths: &Destiny2Paths) -> Result<()> {

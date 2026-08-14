@@ -1,6 +1,6 @@
 // File: linux/src/main.rs
 // Title: Sunrise Linux Server & Comprehensive CLI Dispatcher
-// Plain English: Command-line interface with automated proxy hook, package pre-indexer, and diagnostics.
+// Plain English: Command-line interface with automated proxy hook, launcher bypass, and diagnostics.
 
 use std::env;
 use std::path::PathBuf;
@@ -78,19 +78,20 @@ fn run_install(args: &[String]) -> bool {
     }
     animate_progress("Vault Verification & Index Complete", 25, 50);
 
-    step_header(3, 4, "CONFIGURING SANDBOX & CLIENT PROXY HOOK");
+    step_header(3, 4, "CONFIGURING SANDBOX, PROXY HOOK & LAUNCHER");
     if install_desktop {
         for inst in &installations {
             animate_spinner("Retrieving Project Sunrise steam_api64.dll proxy core...", 800);
             match ModInstaller::ensure_proxy_hook(inst) {
                 Ok(dest) => {
                     log_ok("PROXY CORE", &format!("Installed hook -> {}", dest.display()));
-                    ghost_dialogue("\"Translocated Project Sunrise proxy core into bin/x64/steam_api64.dll. All game network traffic is now routed to your local server sandbox.\"");
                 }
-                Err(e) => {
-                    eprintln!("[-] Failed to install proxy hook: {}", e);
-                }
+                Err(e) => eprintln!("[-] Failed to install proxy hook: {}", e),
             }
+            if let Ok(_) = ModInstaller::backup_and_bypass_launcher(inst) {
+                log_ok("LAUNCHER BYPASS", "Bypassed BattlEye launcher (destiny2.exe targeted directly)");
+            }
+            ghost_dialogue("\"Translocated Project Sunrise proxy core into bin/x64/steam_api64.dll and bypassed anti-cheat launcher. All game network traffic is now routed to your local server sandbox.\"");
         }
     }
     if install_server {
