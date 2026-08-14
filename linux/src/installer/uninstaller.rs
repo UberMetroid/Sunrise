@@ -27,20 +27,32 @@ impl Uninstaller {
     pub fn remove_desktop_integration() -> Result<()> {
         let home = get_home_dir();
 
-        // 1. Remove Desktop icon
+        // 1. Remove Desktop icons
         let desktop_file = home.join("Desktop").join("sunrise-server.desktop");
+        let game_desktop = home.join("Desktop").join("destiny2-sunrise.desktop");
         if desktop_file.exists() {
             let _ = fs::remove_file(desktop_file);
         }
+        if game_desktop.exists() {
+            let _ = fs::remove_file(game_desktop);
+        }
 
-        // 2. Remove application menu entry
+        // 2. Remove application menu entries
         let menu_file = home
             .join(".local")
             .join("share")
             .join("applications")
             .join("sunrise-server.desktop");
+        let game_menu = home
+            .join(".local")
+            .join("share")
+            .join("applications")
+            .join("destiny2-sunrise.desktop");
         if menu_file.exists() {
             let _ = fs::remove_file(menu_file);
+        }
+        if game_menu.exists() {
+            let _ = fs::remove_file(game_menu);
         }
 
         // 3. Remove systemd user service

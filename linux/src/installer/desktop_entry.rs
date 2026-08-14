@@ -1,6 +1,6 @@
 // File: linux/src/installer/desktop_entry.rs
 // Title: Desktop Shortcut, Icon & systemd Service Generator
-// Plain English: Registers desktop entry on ~/Desktop, start menu, and installs custom app icon.
+// Plain English: Registers Destiny 2 (Sunrise) and Sunrise Server entries on ~/Desktop and start menu.
 
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
@@ -45,7 +45,8 @@ impl DesktopIntegration {
         fs::create_dir_all(&apps_dir)
             .map_err(|e| SunriseError::IoError(format!("Failed to create applications dir: {}", e)))?;
 
-        let content = format!(
+        // 1. Sunrise Emulation Server Launcher
+        let server_content = format!(
             "[Desktop Entry]\n\
              Name=Sunrise Emulation Server\n\
              Comment=Local BAP Emulation Server for Project Sunrise\n\
@@ -57,18 +58,38 @@ impl DesktopIntegration {
             binary_path.as_ref().to_string_lossy()
         );
 
-        // 1. Install to system applications menu
-        let menu_file = apps_dir.join("sunrise-server.desktop");
-        fs::write(&menu_file, &content)
-            .map_err(|e| SunriseError::IoError(format!("Failed to write menu entry: {}", e)))?;
+        // 2. Destiny 2 Game Launcher (Project Sunrise Sandbox)
+        let game_content = format!(
+            "[Desktop Entry]\n\
+             Name=Destiny 2 (Project Sunrise)\n\
+             Comment=Launch Destiny 2 via Steam with Project Sunrise Sandbox\n\
+             Exec=steam steam://rungameid/1085660\n\
+             Icon=sunrise\n\
+             Terminal=false\n\
+             Type=Application\n\
+             Categories=Game;\n"
+        );
 
-        // 2. Install directly to ~/Desktop if available
+        // Write to ~/.local/share/applications/
+        let server_menu = apps_dir.join("sunrise-server.desktop");
+        let game_menu = apps_dir.join("destiny2-sunrise.desktop");
+        fs::write(&server_menu, &server_content)
+            .map_err(|e| SunriseError::IoError(format!("Failed to write server menu entry: {}", e)))?;
+        fs::write(&game_menu, &game_content)
+            .map_err(|e| SunriseError::IoError(format!("Failed to write game menu entry: {}", e)))?;
+
+        // Write directly to ~/Desktop if available
         if desktop_dir.exists() {
-            let direct_desktop_file = desktop_dir.join("sunrise-server.desktop");
-            fs::write(&direct_desktop_file, &content)
-                .map_err(|e| SunriseError::IoError(format!("Failed to write desktop icon: {}", e)))?;
-            // Mark executable so Linux desktop environments can launch it directly
-            let _ = fs::set_permissions(&direct_desktop_file, fs::Permissions::from_mode(0o755));
+            let server_desktop = desktop_dir.join("sunrise-server.desktop");
+            let game_desktop = desktop_dir.join("destiny2-sunrise.desktop");
+
+            fs::write(&server_desktop, &server_content)
+                .map_err(|e| SunriseError::IoError(format!("Failed to write server desktop icon: {}", e)))?;
+            fs::write(&game_desktop, &game_content)
+                .map_err(|e| SunriseError::IoError(format!("Failed to write game desktop icon: {}", e)))?;
+
+            let _ = fs::set_permissions(&server_desktop, fs::Permissions::from_mode(0o755));
+            let _ = fs::set_permissions(&game_desktop, fs::Permissions::from_mode(0o755));
         }
 
         Ok(())
