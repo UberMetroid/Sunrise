@@ -58,12 +58,12 @@ fn wrap_text(text: &str, max_width: usize) -> Vec<String> {
 }
 
 pub fn ghost_dialogue(speech: &str) {
-    println!("\x1b[1;33m╭─ Ghost ─────────────────────────────────────────────────────────────\x1b[0m");
-    let wrapped = wrap_text(speech, 68);
+    println!("\x1b[1;33m╭─ Ghost ─────────────────────────────────────────────────────────────╮\x1b[0m");
+    let wrapped = wrap_text(speech, 66);
     for line in wrapped {
         println!("  \x1b[1;37m{}\x1b[0m", line);
     }
-    println!("\x1b[1;33m╰─────────────────────────────────────────────────────────────────────\x1b[0m");
+    println!("\x1b[1;33m╰─────────────────────────────────────────────────────────────────────╯\x1b[0m");
 }
 
 pub fn step_header(step_idx: usize, total: usize, title: &str) {
