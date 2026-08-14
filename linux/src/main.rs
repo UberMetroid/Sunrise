@@ -9,6 +9,7 @@ use std::process;
 use sunrise_linux::crypto::hash::sha256_hex;
 use sunrise_linux::installer::config_setup::SunriseDirectories;
 use sunrise_linux::installer::desktop_entry::DesktopIntegration;
+use sunrise_linux::installer::ghost_narrative::*;
 use sunrise_linux::installer::mod_installer::ModInstaller;
 use sunrise_linux::installer::steam_locator::search_destiny2_installations;
 use sunrise_linux::protocol::bap_frame::{BapFrame, BAP_MAGIC};
@@ -19,35 +20,33 @@ use sunrise_linux::state::light_calculator::{calculate_base_light, GearSlots};
 use sunrise_linux::SUNRISE_LINUX_VERSION;
 
 fn print_usage(program_name: &str) {
-    println!("Sunrise Linux Daemon v{}", SUNRISE_LINUX_VERSION);
+    print_banner();
     println!("Usage:");
-    println!("  {} install                        Detect Steam/Destiny 2 & install config", program_name);
+    println!("  {} install                        Detect Steam/Destiny 2 & configure sandbox", program_name);
     println!("  {} server [bind_address] [port]   Start the BAP emulation server", program_name);
     println!("  {} test                           Run self-test diagnostics", program_name);
     println!("  {} version                        Print version information", program_name);
 }
 
 fn run_install() -> bool {
-    println!("[*] Searching for Destiny 2 installations on Linux...");
+    print_prologue();
+    print_scan_start();
     let installations = search_destiny2_installations();
 
     if installations.is_empty() {
-        println!("[-] No Destiny 2 installation found in standard Steam library paths.");
-        println!("    Creating standalone ~/.config/sunrise configuration...");
+        ghost_speak("I couldn't locate a standard Steam install of Destiny 2, but don't worry.");
+        ghost_speak("I'm setting up our standalone ~/.config/sunrise transponder anyway.");
         let dirs = SunriseDirectories::default_paths();
         if let Err(e) = dirs.initialize(None) {
-            eprintln!("[-] Error initializing config directory: {}", e);
+            eprintln!("[-] Error initializing config: {}", e);
             return false;
         }
-        println!("[+] Initialized config directory at: {}", dirs.config_dir.display());
+        print_epilogue(&dirs.config_dir.display().to_string());
         return true;
     }
 
-    println!("[+] Found {} Destiny 2 installation(s):", installations.len());
-    for (idx, inst) in installations.iter().enumerate() {
-        println!("    [{}] Game Root: {}", idx + 1, inst.game_root.display());
-        println!("        Packages:  {}", inst.packages_dir.display());
-        println!("        Bin (x64): {}", inst.bin_x64_dir.display());
+    for inst in &installations {
+        print_game_found(&inst.game_root.display().to_string(), 126608);
 
         // 1. Initialize ~/.config/sunrise
         let dirs = SunriseDirectories::default_paths();
@@ -55,12 +54,10 @@ fn run_install() -> bool {
             eprintln!("[-] Error initializing config directory: {}", e);
             return false;
         }
-        println!("    [+] Configuration initialized at: {}", dirs.config_dir.display());
 
         // 2. Backup original steam_api64.dll
-        match ModInstaller::backup_original_dll(inst) {
-            Ok(backup) => println!("    [+] Backed up original Steam API DLL to: {}", backup.display()),
-            Err(e) => eprintln!("    [!] Note on Steam API backup: {}", e),
+        if let Ok(backup) = ModInstaller::backup_original_dll(inst) {
+            print_backup_made(&backup.display().to_string());
         }
 
         // 3. Check for compiled Sunrise.dll hook
@@ -70,23 +67,13 @@ fn run_install() -> bool {
             PathBuf::from("Sunrise.dll"),
         ];
 
-        let mut dll_installed = false;
         for dll_path in &candidate_dlls {
             if dll_path.exists() {
-                match ModInstaller::install_hook_dll(inst, dll_path) {
-                    Ok(_) => {
-                        println!("    [+] Installed Sunrise.dll -> {}", inst.steam_api_dll.display());
-                        dll_installed = true;
-                        break;
-                    }
-                    Err(e) => eprintln!("    [-] Error copying Sunrise.dll: {}", e),
+                if ModInstaller::install_hook_dll(inst, dll_path).is_ok() {
+                    story_event("HOOK INSTALLED", &format!("Sunrise.dll -> {}", inst.steam_api_dll.display()));
+                    break;
                 }
             }
-        }
-
-        if !dll_installed {
-            println!("    [i] Note: To complete client hook installation, cross-compile Sunrise.dll with MinGW");
-            println!("        and run 'sunrise-linux install' again.");
         }
     }
 
@@ -94,10 +81,11 @@ fn run_install() -> bool {
     if let Ok(current_exe) = env::current_exe() {
         let _ = DesktopIntegration::install_desktop_entry(&current_exe);
         let _ = DesktopIntegration::install_systemd_service(&current_exe);
-        println!("[+] Created desktop shortcut and systemd user service (~/.config/systemd/user/sunrise.service)");
+        story_event("DESKTOP LINK", "Registered ~/.local/share/applications/sunrise-server.desktop");
     }
 
-    println!("\n[✓] Sunrise Linux installation completed successfully!");
+    let dirs = SunriseDirectories::default_paths();
+    print_epilogue(&dirs.config_dir.display().to_string());
     true
 }
 
