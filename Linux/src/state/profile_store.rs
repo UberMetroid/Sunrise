@@ -1,0 +1,82 @@
+// File: Linux/src/state/profile_store.rs
+// Title: Persistent Player Profile File Storage
+// Plain English: Saves and loads Guardian profiles, characters, and gear inventories to disk.
+
+use std::fs;
+use std::path::{Path, PathBuf};
+
+use crate::error::{Result, SunriseError};
+use crate::installer::steam_locator::get_home_dir;
+use crate::state::account::{AccountState, CharacterClass};
+use crate::state::starter_loadout::StarterLoadoutFactory;
+
+pub struct ProfileStore {
+    storage_path: PathBuf,
+}
+
+impl ProfileStore {
+    pub fn default_store() -> Self {
+        let path = if Path::new("/data").exists() {
+            PathBuf::from("/data/profiles.json")
+        } else {
+            get_home_dir().join(".config").join("sunrise").join("profiles.json")
+        };
+        Self { storage_path: path }
+    }
+
+    pub fn with_path(path: impl Into<PathBuf>) -> Self {
+        Self { storage_path: path.into() }
+    }
+
+    pub fn load_or_create_account(&self, membership_id: u64, name: &str) -> AccountState {
+        if let Ok(account) = self.load_account(membership_id) {
+            return account;
+        }
+
+        let mut new_account = AccountState::new(membership_id, name);
+        new_account.add_character(StarterLoadoutFactory::create_default_character(1001, CharacterClass::Titan));
+        new_account.add_character(StarterLoadoutFactory::create_default_character(1002, CharacterClass::Hunter));
+        new_account.add_character(StarterLoadoutFactory::create_default_character(1003, CharacterClass::Warlock));
+
+        let _ = self.save_account(&new_account);
+        new_account
+    }
+
+    pub fn load_account(&self, membership_id: u64) -> Result<AccountState> {
+        if !self.storage_path.exists() {
+            return Err(SunriseError::FileNotFound(self.storage_path.display().to_string()));
+        }
+
+        let content = fs::read_to_string(&self.storage_path)
+            .map_err(|e| SunriseError::IoError(e.to_string()))?;
+        let accounts: Vec<AccountState> = serde_json::from_str(&content)
+            .map_err(|e| SunriseError::InvalidJson(e.to_string()))?;
+
+        accounts.into_iter()
+            .find(|a| a.membership_id == membership_id)
+            .ok_or_else(|| SunriseError::FileNotFound(format!("Account {} not found", membership_id)))
+    }
+
+    pub fn save_account(&self, account: &AccountState) -> Result<()> {
+        if let Some(parent) = self.storage_path.parent() {
+            let _ = fs::create_dir_all(parent);
+        }
+
+        let mut accounts: Vec<AccountState> = if self.storage_path.exists() {
+            let content = fs::read_to_string(&self.storage_path).unwrap_or_default();
+            serde_json::from_str(&content).unwrap_or_default()
+        } else {
+            Vec::new()
+        };
+
+        accounts.retain(|a| a.membership_id != account.membership_id);
+        accounts.push(account.clone());
+
+        let json = serde_json::to_string_pretty(&accounts)
+            .map_err(|e| SunriseError::InvalidJson(e.to_string()))?;
+        fs::write(&self.storage_path, json)
+            .map_err(|e| SunriseError::IoError(e.to_string()))?;
+
+        Ok(())
+    }
+}
