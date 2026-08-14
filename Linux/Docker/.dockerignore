@@ -1,6 +1,0 @@
-target/
-.git/
-*.dmp
-*.log
-.vscode/
-.idea/

@@ -1,12 +1,17 @@
-# Project Sunrise - Containerized Destiny 2 Server
-# Usage: docker compose -f Docker/docker-compose.yml up -d (or cd Docker && docker compose up -d)
+# Project Sunrise - Universal Self-Hosting Docker Compose
+# Works on Windows (Docker Desktop), Linux (Docker/Podman), and macOS.
+#
+# Usage:
+#   cd Docker
+#   docker compose up -d
+#   docker compose logs -f
 
 services:
   sunrise-server:
     build:
       context: ..
       dockerfile: Docker/Dockerfile
-    image: sunrise-linux:latest
+    image: sunrise-server:latest
     container_name: sunrise-server
     restart: unless-stopped
     ports:

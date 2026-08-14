@@ -1,6 +1,6 @@
-# 🐳 Project Sunrise: Universal Self-Hosting Guide
+# 🐳 Project Sunrise: Docker Self-Hosting Suite
 
-A high-performance, containerized emulation server for **Project Sunrise** (Destiny 2 offline exploration sandbox).
+A containerized emulation server for **Project Sunrise** (Destiny 2 offline exploration sandbox).
 
 Compatible with **Windows (Docker Desktop)**, **Linux (Docker & Podman)**, **macOS**, and home server environments (**Unraid, TrueNAS, Synology**).
 
@@ -8,17 +8,14 @@ Compatible with **Windows (Docker Desktop)**, **Linux (Docker & Podman)**, **mac
 
 ## ⚡ Quick Start
 
-Anyone on Windows, Linux, or macOS can start the server with a single command:
-
 ```bash
-# 1. Clone the repository
-git clone https://github.com/UberMetroid/Sunrise.git
-cd Sunrise
+# 1. Navigate to the Docker directory
+cd Docker
 
 # 2. Launch the emulation server
 docker compose up -d
 
-# 3. View live server logs
+# 3. View live server telemetry
 docker compose logs -f
 ```
 
@@ -27,7 +24,7 @@ docker compose logs -f
 ## 🎮 Connecting Your Destiny 2 Client
 
 ### 1. Playing on the Same PC (Localhost)
-* Launch the game via Steam with the Project Sunrise proxy hook (`steam_api64.dll`).
+* Launch Destiny 2 with the Project Sunrise proxy hook (`steam_api64.dll`).
 * The game client will automatically connect to `127.0.0.1:7777`.
 
 ### 2. Playing on a Windows PC with Server on LAN (Home Lab / Linux / NAS)
@@ -50,5 +47,6 @@ docker compose logs -f
 ## 🛑 Stopping the Server
 
 ```bash
+cd Docker
 docker compose down
 ```

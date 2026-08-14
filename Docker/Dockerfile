@@ -1,4 +1,4 @@
-# Multi-stage Dockerfile for Project Sunrise Linux Emulation Server
+# Multi-stage Dockerfile for Project Sunrise Destiny 2 Emulation Server
 # Stage 1: Build static binary with Rust Alpine
 FROM rust:alpine AS builder
 
@@ -7,10 +7,10 @@ WORKDIR /build
 # Install required build utilities
 RUN apk add --no-cache musl-dev
 
-# Copy manifest and source files
-COPY Cargo.toml Cargo.lock ./
-COPY assets ./assets
-COPY src ./src
+# Copy Linux crate files
+COPY Linux/Cargo.toml Linux/Cargo.lock ./
+COPY Linux/assets ./assets
+COPY Linux/src ./src
 
 # Build release binary
 RUN cargo build --release --locked
