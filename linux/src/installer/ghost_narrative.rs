@@ -63,6 +63,20 @@ pub fn print_game_found(root: &str, pkg_count: usize) {
     );
 }
 
+pub fn print_no_game_found() {
+    story_event("SECTOR STATUS", "No active Destiny 2 installation found in standard Steam paths");
+    story_event("VANGUARD ADVISORY", "Install Destiny 2 via Steam (App ID: 1085660)");
+    ghost_speak(
+        "I couldn't locate a Destiny 2 vault in your standard Steam libraries, \
+         Guardian.",
+    );
+    ghost_speak(
+        "Don't worry! I'm establishing your standalone ~/.config/sunrise \
+         coordinates right now. Whenever you install the game, simply re-run \
+         the installer to link the archives.",
+    );
+}
+
 pub fn print_backup_made(backup_path: &str) {
     story_event("CORE SAFEGUARD", &format!("Archived original Steam API to {}", backup_path));
     ghost_speak(

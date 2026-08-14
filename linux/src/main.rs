@@ -34,8 +34,7 @@ fn run_install() -> bool {
     let installations = search_destiny2_installations();
 
     if installations.is_empty() {
-        ghost_speak("I couldn't locate a standard Steam install of Destiny 2, but don't worry.");
-        ghost_speak("I'm setting up our standalone ~/.config/sunrise transponder anyway.");
+        print_no_game_found();
         let dirs = SunriseDirectories::default_paths();
         if let Err(e) = dirs.initialize(None) {
             eprintln!("[-] Error initializing config: {}", e);
