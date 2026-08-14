@@ -67,21 +67,29 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd || echo "")
 if [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/Cargo.toml" ]; then
     BUILD_DIR="$SCRIPT_DIR"
     echo -e "  ${GREEN}[  OK  ]${RESET} ${WHITE}Local Workspace:${RESET} $BUILD_DIR"
+elif [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/Linux/Cargo.toml" ]; then
+    BUILD_DIR="$SCRIPT_DIR/Linux"
+    echo -e "  ${GREEN}[  OK  ]${RESET} ${WHITE}Root Workspace:${RESET} $BUILD_DIR"
 elif [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/linux/Cargo.toml" ]; then
     BUILD_DIR="$SCRIPT_DIR/linux"
     echo -e "  ${GREEN}[  OK  ]${RESET} ${WHITE}Root Workspace:${RESET} $BUILD_DIR"
 else
     SUNRISE_REPO="${SUNRISE_REPO:-https://github.com/UberMetroid/Sunrise.git}"
     SUNRISE_BRANCH="${SUNRISE_BRANCH:-master}"
-    BUILD_DIR="$HOME/.cache/sunrise-build/linux"
+    CLONE_DIR="$HOME/.cache/sunrise-build"
 
     ghost_box "\"Transmitting beacon coordinates to $SUNRISE_REPO... Pulling down the latest Vanguard emulation blueprints.\""
     echo -e "  ${YELLOW}[ SYNC ]${RESET} ${WHITE}Downloading repository:${RESET} $SUNRISE_REPO ($SUNRISE_BRANCH)"
-    rm -rf "$HOME/.cache/sunrise-build"
-    mkdir -p "$HOME/.cache/sunrise-build"
+    rm -rf "$CLONE_DIR"
+    mkdir -p "$CLONE_DIR"
     git clone --depth 1 --branch "$SUNRISE_BRANCH" "$SUNRISE_REPO" \
-        "$HOME/.cache/sunrise-build" --quiet
-    echo -e "  ${GREEN}[  OK  ]${RESET} ${WHITE}Source Synchronized:${RESET} ~/.cache/sunrise-build"
+        "$CLONE_DIR" --quiet
+    if [ -d "$CLONE_DIR/Linux" ]; then
+        BUILD_DIR="$CLONE_DIR/Linux"
+    else
+        BUILD_DIR="$CLONE_DIR/linux"
+    fi
+    echo -e "  ${GREEN}[  OK  ]${RESET} ${WHITE}Source Synchronized:${RESET} $BUILD_DIR"
 fi
 
 # 3. Build release binary

@@ -1,6 +1,6 @@
 # Project Sunrise // Linux Foundry Rules & Architecture Standards
 
-This document establishes the official engineering guidelines, RFC compliance mandates, AST naming conventions, user preferences, and coding standards for the Linux emulation suite of **Project Sunrise** (`linux/`).
+This document establishes the official engineering guidelines, RFC compliance mandates, AST naming conventions, user preferences, and coding standards for the Linux emulation suite of **Project Sunrise** (`Linux/`).
 
 ---
 
@@ -48,7 +48,7 @@ All network protocols, cryptographic operations, serialization formats, and oper
 ## 3. Architectural Isolation & Upstream Purity
 
 1. **Strict Subdirectory Confinement:**
-   - All Linux-specific binaries, Rust crates, scripts, assets, and documentation must reside **100% inside the `linux/` directory**.
+   - All Linux-specific binaries, Rust crates, scripts, assets, Docker configs (`Linux/Docker/`), and documentation must reside **100% inside the `Linux/` directory**.
    - The repository root (`Sunrise/`, `Sunrise.sln`, `Sunrise.vcxproj`, etc.) must remain identical to upstream `stanuwu/Sunrise` to ensure clean upstream tracking and merging.
 
 2. **Artifact Locations:**
@@ -76,12 +76,12 @@ All network protocols, cryptographic operations, serialization formats, and oper
 
 1. **Continuous Version Bumps:**
    - Every modification, new feature, or bugfix must increment the version number across all three canonical locations:
-     - `linux/Cargo.toml` (`version = "x.y.z"`)
-     - `linux/src/lib.rs` (`pub const SUNRISE_LINUX_VERSION = "x.y.z";`)
-     - `linux/src/settings/config.rs` (`version: "x.y.z".to_string()`)
+     - `Linux/Cargo.toml` (`version = "x.y.z"`)
+     - `Linux/src/lib.rs` (`pub const SUNRISE_LINUX_VERSION = "x.y.z";`)
+     - `Linux/src/settings/config.rs` (`version: "x.y.z".to_string()`)
 
 2. **GitHub Synchronization:**
-   - Every update must be staged (`git add linux/`), committed with a clear descriptive message, and pushed directly to `origin master`.
+   - Every update must be staged (`git add Linux/`), committed with a clear descriptive message, and pushed directly to `origin master`.
 
 ---
 

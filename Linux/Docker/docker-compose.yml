@@ -1,11 +1,11 @@
 # Project Sunrise - Containerized Destiny 2 Server
-# Usage: docker compose -f container/docker-compose.yml up -d (or cd container && docker compose up -d)
+# Usage: docker compose -f Docker/docker-compose.yml up -d (or cd Docker && docker compose up -d)
 
 services:
   sunrise-server:
     build:
       context: ..
-      dockerfile: container/Dockerfile
+      dockerfile: Docker/Dockerfile
     image: sunrise-linux:latest
     container_name: sunrise-server
     restart: unless-stopped

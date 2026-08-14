@@ -9,8 +9,8 @@ A lightweight, high-performance, containerized emulation server for **Project Su
 Run the server with a single command from inside this directory:
 
 ```bash
-# 1. Navigate to the container directory
-cd linux/container
+# 1. Navigate to the Docker directory
+cd Linux/Docker
 
 # 2. Build and launch the container in the background
 docker compose up -d
@@ -24,8 +24,8 @@ docker compose logs -f
 ## 🚀 Running with Docker CLI
 
 ```bash
-# Build the image (from linux/ directory)
-docker build -f container/Dockerfile -t sunrise-linux:latest .
+# Build the image (from Linux/ directory)
+docker build -f Docker/Dockerfile -t sunrise-linux:latest .
 
 # Run the container
 docker run -d \
@@ -41,7 +41,7 @@ docker run -d \
 ## 🦭 Running with Podman (Rootless)
 
 ```bash
-podman build -f container/Dockerfile -t sunrise-linux:latest .
+podman build -f Docker/Dockerfile -t sunrise-linux:latest .
 podman run -d \
   --name sunrise-server \
   -p 7777:7777 \
