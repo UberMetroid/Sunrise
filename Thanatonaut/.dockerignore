@@ -1,0 +1,13 @@
+.git/
+Sunrise/
+x64/
+Debug/
+Release/
+build-win/
+*.sln
+*.vcxproj*
+*.log
+*.dmp
+target/
+.vscode/
+.idea/
