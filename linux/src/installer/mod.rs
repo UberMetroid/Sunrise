@@ -9,6 +9,7 @@ pub mod desktop_entry;
 pub mod ghost_narrative;
 pub mod uninstaller;
 pub mod doctor;
+pub mod depot_downloader;
 
 pub use steam_locator::*;
 pub use config_setup::*;
@@ -17,3 +18,4 @@ pub use desktop_entry::*;
 pub use ghost_narrative::*;
 pub use uninstaller::*;
 pub use doctor::*;
+pub use depot_downloader::*;

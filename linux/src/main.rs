@@ -1,6 +1,6 @@
 // File: linux/src/main.rs
 // Title: Sunrise Linux Server & Comprehensive CLI Dispatcher
-// Plain English: Command-line interface with automated proxy hook, launcher bypass, and diagnostics.
+// Plain English: Command-line interface with depot downloader, proxy hook, and server runtime.
 
 use std::env;
 use std::path::PathBuf;
@@ -8,6 +8,7 @@ use std::process;
 
 use sunrise_linux::crypto::hash::sha256_hex;
 use sunrise_linux::installer::config_setup::SunriseDirectories;
+use sunrise_linux::installer::depot_downloader::DepotDownloader;
 use sunrise_linux::installer::desktop_entry::DesktopIntegration;
 use sunrise_linux::installer::doctor::SunriseDoctor;
 use sunrise_linux::installer::ghost_narrative::*;
@@ -22,13 +23,14 @@ use sunrise_linux::state::light_calculator::{calculate_base_light, GearSlots};
 use sunrise_linux::state::package_scanner::PackageIndex;
 use sunrise_linux::SUNRISE_LINUX_VERSION;
 
-fn print_usage(program_name: &str) {
+fn print_usage(prog: &str) {
     print_banner();
     println!("Project Sunrise // Linux Vanguard Emulation Suite (v{})", SUNRISE_LINUX_VERSION);
-    println!("Usage: {} <COMMAND> [OPTIONS]\n", program_name);
+    println!("Usage: {} <COMMAND> [OPTIONS]\n", prog);
     println!("Commands:");
-    println!("  install [--yes / -y]              Interactive installer (downloads & sets up proxy hook)");
+    println!("  install [--yes / -y]              Interactive installer (proxy hook + launcher bypass)");
     println!("  server [bind_address] [port]      Start the BAP emulation server (default: 127.0.0.1:7777)");
+    println!("  depot | download [target_dir]     Download legacy Destiny 2 depot archives via Steam");
     println!("  status                            Check if local server daemon is actively listening");
     println!("  doctor | check                    Run comprehensive system & game vault diagnostics");
     println!("  index [packages_dir]              Scan & pre-cache Destiny 2 package manifest headers");
@@ -50,8 +52,11 @@ fn run_install(args: &[String]) -> bool {
     let install_desktop = if auto_yes { true } else {
         prompt_confirm("Install Destiny 2 Start Menu & Steam proxy hook integration?", true)
     };
+    let download_depots = if auto_yes { false } else {
+        prompt_confirm("Download Legacy Destiny 2 Game Depots (Season of Arrivals)?", false)
+    };
 
-    if !install_server && !install_desktop {
+    if !install_server && !install_desktop && !download_depots {
         println!("\n[!] No components selected. Installation aborted.");
         return true;
     }
@@ -74,7 +79,14 @@ fn run_install(args: &[String]) -> bool {
         ghost_dialogue("\"Found it! Your Destiny 2 package archives are intact and indexed.\"");
     } else {
         log_scan("SECTOR STATUS", "No standard Steam Destiny 2 install detected yet");
-        log_info("ADVISORY", "Install Destiny 2 on Steam (App ID: 1085660) anytime");
+    }
+
+    if download_depots {
+        let target = installations.first().map(|i| i.game_root.clone()).unwrap_or_else(|| {
+            let home = sunrise_linux::installer::steam_locator::get_home_dir();
+            home.join(".local/share/Steam/steamapps/common/Destiny 2")
+        });
+        let _ = DepotDownloader::run_interactive_download(&target);
     }
     animate_progress("Vault Verification & Index Complete", 25, 50);
 
@@ -178,37 +190,40 @@ fn run_self_tests() -> bool {
 
 fn main() {
     let args: Vec<String> = env::args().collect();
-    let program = args.get(0).map(|s| s.as_str()).unwrap_or("sunrise-linux");
+    let prog = args.get(0).map(|s| s.as_str()).unwrap_or("sunrise-linux");
 
     if args.len() < 2 {
-        print_usage(program);
+        print_usage(prog);
         process::exit(1);
     }
 
     match args[1].as_str() {
         "install" => {
-            if !run_install(&args) {
+            if !run_install(&args) { process::exit(1); }
+        }
+        "depot" | "download" => {
+            let target = args.get(2).map(PathBuf::from).unwrap_or_else(|| {
+                let installations = search_destiny2_installations();
+                installations.first().map(|i| i.game_root.clone()).unwrap_or_else(|| {
+                    sunrise_linux::installer::steam_locator::get_home_dir()
+                        .join(".local/share/Steam/steamapps/common/Destiny 2")
+                })
+            });
+            if let Err(e) = DepotDownloader::run_interactive_download(&target) {
+                eprintln!("[-] Depot download error: {}", e);
                 process::exit(1);
             }
         }
         "uninstall" | "restore" => {
-            if !run_uninstall() {
-                process::exit(1);
-            }
+            if !run_uninstall() { process::exit(1); }
         }
-        "status" => {
-            SunriseDoctor::check_status();
-        }
+        "status" => { SunriseDoctor::check_status(); }
         "doctor" | "check" => {
-            if !SunriseDoctor::run_diagnostics() {
-                process::exit(1);
-            }
+            if !SunriseDoctor::run_diagnostics() { process::exit(1); }
         }
         "index" => {
             let custom_path = args.get(2).cloned();
-            if !run_index(custom_path) {
-                process::exit(1);
-            }
+            if !run_index(custom_path) { process::exit(1); }
         }
         "server" => {
             let bind_addr = args.get(2).cloned().unwrap_or_else(|| "127.0.0.1".to_string());
@@ -226,18 +241,14 @@ fn main() {
             }
         }
         "test" => {
-            if !run_self_tests() {
-                process::exit(1);
-            }
+            if !run_self_tests() { process::exit(1); }
         }
         "version" | "-v" | "--version" => {
             println!("sunrise-linux v{}", SUNRISE_LINUX_VERSION);
         }
-        "help" | "-h" | "--help" => {
-            print_usage(program);
-        }
+        "help" | "-h" | "--help" => { print_usage(prog); }
         _ => {
-            print_usage(program);
+            print_usage(prog);
             process::exit(1);
         }
     }
