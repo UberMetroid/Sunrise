@@ -1,6 +1,6 @@
 // File: linux/src/installer/ghost_narrative.rs
 // Title: Ghost Companion Narrative & In-Line Terminal Animation Engine
-// Plain English: Renders detailed Ghost ASCII art, in-line progress animations, and interactive prompts.
+// Plain English: Renders Ghost ASCII art, word-wrapped dialogue boxes, and in-line animations.
 
 use std::io::{self, Write};
 use std::thread;
@@ -26,10 +26,45 @@ pub fn print_banner() {
     println!("\x1b[1;36m{}\x1b[0m", GHOST_ASCII_BANNER);
 }
 
+fn wrap_text(text: &str, max_width: usize) -> Vec<String> {
+    let mut lines = Vec::new();
+    for raw_line in text.lines() {
+        let trimmed = raw_line.trim();
+        if trimmed.is_empty() {
+            lines.push(String::new());
+            continue;
+        }
+
+        let words: Vec<&str> = trimmed.split_whitespace().collect();
+        let mut current_line = String::new();
+
+        for word in words {
+            if current_line.is_empty() {
+                current_line.push_str(word);
+            } else if current_line.len() + 1 + word.len() <= max_width {
+                current_line.push(' ');
+                current_line.push_str(word);
+            } else {
+                lines.push(current_line);
+                current_line = word.to_string();
+            }
+        }
+
+        if !current_line.is_empty() {
+            lines.push(current_line);
+        }
+    }
+    lines
+}
+
 pub fn ghost_dialogue(speech: &str) {
     println!("\x1b[1;33m╭─ Ghost ─────────────────────────────────────────────────────────────╮\x1b[0m");
-    for line in speech.lines() {
-        println!("\x1b[1;33m│\x1b[0m  \x1b[1;37m{}\x1b[0m", line);
+    let wrapped = wrap_text(speech, 64);
+    for line in wrapped {
+        println!(
+            "\x1b[1;33m│\x1b[0m  \x1b[1;37m{:<64}\x1b[0m \x1b[1;33m│\x1b[0m",
+            line
+        );
     }
     println!("\x1b[1;33m╰─────────────────────────────────────────────────────────────────────╯\x1b[0m");
 }
@@ -104,9 +139,7 @@ pub fn prompt_confirm(question: &str, default_yes: bool) -> bool {
 pub fn print_prologue() {
     print_banner();
     ghost_dialogue(
-        "\"The Red War took the main Bungie relay offline, but I've isolated\n \
-         a stable local frequency. I will guide you through setting up our\n \
-         offline BAP sandbox step-by-step. Stand by.\"",
+        "\"The Red War took the main Bungie relay offline, but I've isolated a stable local frequency. I will guide you through setting up our offline BAP sandbox step-by-step. Stand by.\"",
     );
 }
 
@@ -127,9 +160,7 @@ pub fn print_epilogue(has_desktop: bool) {
     }
     println!();
     ghost_dialogue(
-        "\"All selected systems are green, Guardian! The Traveler's light is\n \
-         shining on local loopback. Launch 'sunrise-linux server' whenever\n \
-         you're ready to transmat into the sandbox. I'll see you starside!\"",
+        "\"All selected systems are green, Guardian! The Traveler's light is shining on local loopback. Launch 'sunrise-linux server' whenever you're ready to transmat into the sandbox. I'll see you starside!\"",
     );
     println!();
 }
@@ -137,10 +168,9 @@ pub fn print_epilogue(has_desktop: bool) {
 pub fn print_uninstall_complete() {
     print_banner();
     ghost_dialogue(
-        "\"Reverting local loopback modifications and restoring original\n \
-         Vanguard telemetry... Your game installation is back in pristine state.\"",
+        "\"Reverting local loopback modifications and restoring original Vanguard telemetry... Your game installation is back in pristine state.\"",
     );
     log_ok("RESTORATION", "Original steam_api64.dll restored in game folders");
-    log_ok("CLEANUP", "Removed desktop icon, start menu entry, and service");
+    log_ok("CLEANUP", "Removed start menu entries, vector icon, and service");
     println!();
 }

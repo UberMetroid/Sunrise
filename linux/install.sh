@@ -15,10 +15,11 @@ DIM="\033[38;5;240m"
 RESET="\033[0m"
 
 ghost_box() {
+    local text="$1"
     echo -e "${YELLOW}╭─ Ghost ─────────────────────────────────────────────────────────────╮${RESET}"
-    while IFS= read -r line; do
-        echo -e "${YELLOW}│${RESET}  ${WHITE}${line}${RESET}"
-    done <<< "$1"
+    echo -e "$text" | fold -s -w 64 | while IFS= read -r line; do
+        printf "${YELLOW}│${RESET}  ${WHITE}%-64s${RESET} ${YELLOW}│${RESET}\n" "$line"
+    done
     echo -e "${YELLOW}╰─────────────────────────────────────────────────────────────────────╯${RESET}"
 }
 
@@ -46,8 +47,7 @@ echo -e "${DIM}─────────────────────�
 # 1. Check for Rust toolchain
 if ! command -v cargo &>/dev/null; then
     echo -e "  ${RED}[ FAIL ]${RESET} ${WHITE}Rust toolchain ('cargo') was not found.${RESET}"
-    ghost_box "\"Guardian down! The Rust weapon foundry ('cargo') is missing.\n \
-Please install Rust via 'curl https://sh.rustup.rs -sSf | sh' to continue.\""
+    ghost_box "\"Guardian down! The Rust weapon foundry ('cargo') is missing. Please install Rust via 'curl https://sh.rustup.rs -sSf | sh' to continue.\""
     exit 1
 fi
 echo -e "  ${GREEN}[  OK  ]${RESET} ${WHITE}Rust Foundry Detected:${RESET} $(cargo --version | cut -d' ' -f1,2)"
@@ -66,8 +66,7 @@ else
     SUNRISE_BRANCH="${SUNRISE_BRANCH:-master}"
     BUILD_DIR="$HOME/.cache/sunrise-build/linux"
 
-    ghost_box "\"Transmitting beacon coordinates to $SUNRISE_REPO...\n \
-Pulling down the latest Vanguard emulation blueprints.\""
+    ghost_box "\"Transmitting beacon coordinates to $SUNRISE_REPO... Pulling down the latest Vanguard emulation blueprints.\""
     echo -e "  ${YELLOW}[ SYNC ]${RESET} ${WHITE}Downloading repository:${RESET} $SUNRISE_REPO ($SUNRISE_BRANCH)"
     rm -rf "$HOME/.cache/sunrise-build"
     mkdir -p "$HOME/.cache/sunrise-build"
@@ -95,7 +94,7 @@ echo -e "  ${GREEN}[  OK  ]${RESET} ${WHITE}Global Executable Linked:${RESET} $L
 echo -e "${GREEN}=======================================================================${RESET}"
 echo -e "${GREEN}  TRANSMAT STATUS: READY TO LAUNCH                                     ${RESET}"
 echo -e "${GREEN}=======================================================================${RESET}"
-echo -e "  Launch Terminal Server:  ${CYAN}sunrise-linux server${RESET}"
+echo -e "  Launch Terminal Server:   ${CYAN}sunrise-linux server${RESET}"
 echo -e "  Launch Background Daemon: ${CYAN}systemctl --user start sunrise${RESET}"
-echo -e "  Inspect Live Logs:       ${CYAN}journalctl --user -u sunrise -f${RESET}"
+echo -e "  Inspect Live Logs:        ${CYAN}journalctl --user -u sunrise -f${RESET}"
 echo -e "${GREEN}=======================================================================${RESET}\n"
