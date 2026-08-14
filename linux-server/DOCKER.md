@@ -9,8 +9,8 @@ Compatible with **Windows (Docker Desktop)**, **Linux (Docker & Podman)**, **mac
 ## ⚡ Quick Start
 
 ```bash
-# 1. Navigate to the Docker directory
-cd Docker
+# 1. Navigate to the linux-server directory
+cd linux-server
 
 # 2. Launch the emulation server
 docker compose up -d
@@ -47,6 +47,6 @@ docker compose logs -f
 ## 🛑 Stopping the Server
 
 ```bash
-cd Docker
+cd linux-server
 docker compose down
 ```

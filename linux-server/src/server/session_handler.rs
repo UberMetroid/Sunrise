@@ -1,4 +1,4 @@
-// File: Linux/src/server/session_handler.rs
+// File: linux-server/src/server/session_handler.rs
 // Title: BAP Session Dispatcher & Live Profile State Manager
 // Plain English: Dispatches incoming frames, equips items, loads destinations, and persists profiles.
 

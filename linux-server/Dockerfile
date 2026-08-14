@@ -7,10 +7,10 @@ WORKDIR /build
 # Install required build utilities
 RUN apk add --no-cache musl-dev
 
-# Copy Linux crate files
-COPY Linux/Cargo.toml Linux/Cargo.lock ./
-COPY Linux/assets ./assets
-COPY Linux/src ./src
+# Copy linux-server crate files
+COPY Cargo.toml Cargo.lock ./
+COPY assets ./assets
+COPY src ./src
 
 # Build release binary
 RUN cargo build --release --locked

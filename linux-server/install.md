@@ -5,7 +5,7 @@
 To install Project Sunrise on any Linux machine with a single terminal command:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/UberMetroid/Sunrise/master/linux/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/UberMetroid/Sunrise/master/linux-server/install.sh | bash
 ```
 
 ---
@@ -15,7 +15,7 @@ curl -fsSL https://raw.githubusercontent.com/UberMetroid/Sunrise/master/linux/in
 If you already have this repository cloned locally:
 
 ```bash
-./linux/install.sh
+./linux-server/install.sh
 ```
 
 Or from inside the `linux` folder:
@@ -87,7 +87,7 @@ sunrise-linux test
 
 To run the complete Rust test suite:
 ```bash
-cd linux && cargo test
+cd linux-server && cargo test
 ```
 
 ---

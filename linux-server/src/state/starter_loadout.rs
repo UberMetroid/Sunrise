@@ -1,4 +1,4 @@
-// File: Linux/src/state/starter_loadout.rs
+// File: linux-server/src/state/starter_loadout.rs
 // Title: Default Season of Arrivals Guardian Loadout Factory
 // Plain English: Generates rich starter loadouts with classic and exotic weapons, armor, and sparrows.
 

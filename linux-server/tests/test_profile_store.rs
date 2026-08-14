@@ -1,4 +1,4 @@
-// File: Linux/tests/test_profile_store.rs
+// File: linux-server/tests/test_profile_store.rs
 // Title: ProfileStore Unit and Integration Tests
 // Plain English: Verifies character creation, loadout defaults, and disk persistence.
 

@@ -67,11 +67,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd || echo "")
 if [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/Cargo.toml" ]; then
     BUILD_DIR="$SCRIPT_DIR"
     echo -e "  ${GREEN}[  OK  ]${RESET} ${WHITE}Local Workspace:${RESET} $BUILD_DIR"
-elif [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/Linux/Cargo.toml" ]; then
-    BUILD_DIR="$SCRIPT_DIR/Linux"
-    echo -e "  ${GREEN}[  OK  ]${RESET} ${WHITE}Root Workspace:${RESET} $BUILD_DIR"
-elif [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/linux/Cargo.toml" ]; then
-    BUILD_DIR="$SCRIPT_DIR/linux"
+elif [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/linux-server/Cargo.toml" ]; then
+    BUILD_DIR="$SCRIPT_DIR/linux-server"
     echo -e "  ${GREEN}[  OK  ]${RESET} ${WHITE}Root Workspace:${RESET} $BUILD_DIR"
 else
     SUNRISE_REPO="${SUNRISE_REPO:-https://github.com/UberMetroid/Sunrise.git}"
@@ -84,7 +81,9 @@ else
     mkdir -p "$CLONE_DIR"
     git clone --depth 1 --branch "$SUNRISE_BRANCH" "$SUNRISE_REPO" \
         "$CLONE_DIR" --quiet
-    if [ -d "$CLONE_DIR/Linux" ]; then
+    if [ -d "$CLONE_DIR/linux-server" ]; then
+        BUILD_DIR="$CLONE_DIR/linux-server"
+    elif [ -d "$CLONE_DIR/Linux" ]; then
         BUILD_DIR="$CLONE_DIR/Linux"
     else
         BUILD_DIR="$CLONE_DIR/linux"

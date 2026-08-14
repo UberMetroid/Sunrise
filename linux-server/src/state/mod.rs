@@ -1,4 +1,4 @@
-// File: Linux/src/state/mod.rs
+// File: linux-server/src/state/mod.rs
 // Title: Game State and Character Progression Module
 // Plain English: Manages inventory, accounts, activities, profiles, and power/light calculations.
 

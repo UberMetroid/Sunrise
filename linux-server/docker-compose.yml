@@ -2,7 +2,7 @@
 # Works on Windows (Docker Desktop), Linux (Docker/Podman), and macOS.
 #
 # Usage:
-#   cd Docker
+#   cd linux-server
 #   docker compose up -d
 #   docker compose logs -f
 
@@ -10,7 +10,7 @@ services:
   sunrise-server:
     build:
       context: ..
-      dockerfile: Docker/Dockerfile
+      dockerfile: Dockerfile
     image: sunrise-server:latest
     container_name: sunrise-server
     restart: unless-stopped

@@ -1,4 +1,4 @@
-// File: Linux/src/server/client_registry.rs
+// File: linux-server/src/server/client_registry.rs
 // Title: Multi-Client Registry & Steam ID Identity Resolver
 // Plain English: Tracks live client sessions, maps SteamID64 to membership_id, owns outbound queues.
 
