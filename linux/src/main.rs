@@ -1,6 +1,6 @@
 // File: linux/src/main.rs
-// Title: Sunrise Linux Server & CLI Entrypoint
-// Plain English: Command-line interface with interactive prompts and in-line animations.
+// Title: Sunrise Linux Server & Comprehensive CLI Dispatcher
+// Plain English: Command-line interface with help, doctor diagnostics, daemon status, and server runner.
 
 use std::env;
 use std::path::PathBuf;
@@ -9,6 +9,7 @@ use std::process;
 use sunrise_linux::crypto::hash::sha256_hex;
 use sunrise_linux::installer::config_setup::SunriseDirectories;
 use sunrise_linux::installer::desktop_entry::DesktopIntegration;
+use sunrise_linux::installer::doctor::SunriseDoctor;
 use sunrise_linux::installer::ghost_narrative::*;
 use sunrise_linux::installer::mod_installer::ModInstaller;
 use sunrise_linux::installer::steam_locator::search_destiny2_installations;
@@ -23,13 +24,20 @@ use sunrise_linux::SUNRISE_LINUX_VERSION;
 
 fn print_usage(program_name: &str) {
     print_banner();
-    println!("Usage:");
-    println!("  {} install [--yes]                Run animated installation with confirmation prompts", program_name);
-    println!("  {} index [packages_dir]           Scan & cache Destiny 2 package manifest headers", program_name);
-    println!("  {} server [bind_address] [port]   Start the BAP emulation server", program_name);
-    println!("  {} test                           Run self-test diagnostics", program_name);
-    println!("  {} uninstall                      Restore original game files & remove integration", program_name);
-    println!("  {} version                        Print version information", program_name);
+    println!("Project Sunrise // Linux Vanguard Emulation Suite (v{})", SUNRISE_LINUX_VERSION);
+    println!("Usage: {} <COMMAND> [OPTIONS]\n", program_name);
+    println!("Commands:");
+    println!("  install [--yes / -y]              Interactive animated installer with component prompts");
+    println!("  server [bind_address] [port]      Start the BAP emulation server (default: 127.0.0.1:7777)");
+    println!("  status                            Check if local server daemon is actively listening");
+    println!("  doctor | check                    Run comprehensive system & game vault diagnostics");
+    println!("  index [packages_dir]              Scan & pre-cache Destiny 2 package manifest headers");
+    println!("  uninstall | restore               Restore original game DLLs and remove shortcuts");
+    println!("  test                              Run cryptographic & protocol self-test diagnostics");
+    println!("  version | -v | --version          Print version information");
+    println!("  help | -h | --help                Display this help overview\n");
+    println!("Proton Steam Launch Option:");
+    println!("  WINEDLLOVERRIDES=\"steam_api64=n,b\" %command%\n");
 }
 
 fn run_install(args: &[String]) -> bool {
@@ -48,13 +56,11 @@ fn run_install(args: &[String]) -> bool {
         return true;
     }
 
-    // Step 1: Drive & Steam Scanning
     step_header(1, 4, "SCANNING LOCAL STORAGE & STEAM LIBRARIES");
     animate_spinner("Scanning storage sectors for Destiny 2 package archives...", 600);
     let installations = search_destiny2_installations();
     animate_progress("Storage Scan Complete", 0, 25);
 
-    // Step 2: Game Vault Verification
     step_header(2, 4, "VERIFYING GAME VAULT & ARCHIVE INTEGRITY");
     if let Some(first) = installations.first() {
         log_ok("GAME ROOT", &first.game_root.display().to_string());
@@ -66,7 +72,6 @@ fn run_install(args: &[String]) -> bool {
     }
     animate_progress("Vault Verification Complete", 25, 50);
 
-    // Step 3: Steam Core Safeguard & Sandbox Init
     step_header(3, 4, "CONFIGURING SANDBOX & CORE TELEMETRY");
     if install_desktop {
         for inst in &installations {
@@ -84,7 +89,6 @@ fn run_install(args: &[String]) -> bool {
     }
     animate_progress("Sandbox Configured", 50, 75);
 
-    // Step 4: Desktop Integration
     step_header(4, 4, "SYSTEM INTEGRATION & WORKSPACE SHORTCUTS");
     if let Ok(current_exe) = env::current_exe() {
         if install_desktop {
@@ -177,6 +181,14 @@ fn main() {
                 process::exit(1);
             }
         }
+        "status" => {
+            SunriseDoctor::check_status();
+        }
+        "doctor" | "check" => {
+            if !SunriseDoctor::run_diagnostics() {
+                process::exit(1);
+            }
+        }
         "index" => {
             let custom_path = args.get(2).cloned();
             if !run_index(custom_path) {
@@ -205,6 +217,9 @@ fn main() {
         }
         "version" | "-v" | "--version" => {
             println!("sunrise-linux v{}", SUNRISE_LINUX_VERSION);
+        }
+        "help" | "-h" | "--help" => {
+            print_usage(program);
         }
         _ => {
             print_usage(program);

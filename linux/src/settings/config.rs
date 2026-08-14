@@ -38,7 +38,7 @@ pub struct SunriseSettings {
 impl Default for SunriseSettings {
     fn default() -> Self {
         Self {
-            version: "0.4.2".to_string(),
+            version: "0.4.3".to_string(),
             server: ServerConfig::default(),
             auto_unlock_entitlements: true,
             default_power_cap: 1000,
