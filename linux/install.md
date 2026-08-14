@@ -25,6 +25,18 @@ cd linux && ./install.sh
 
 ---
 
+## Steam Launch Parameter (Required for Proton / Wine)
+
+In Steam, right-click **Destiny 2** -> **Properties** -> **Launch Options**, and paste:
+
+```bash
+WINEDLLOVERRIDES="steam_api64=n,b" %command%
+```
+
+This instructs Proton to load Sunrise's proxy `steam_api64.dll` rather than the default Wine stub.
+
+---
+
 ## What the Installer Does Automatically
 
 1. **Rust Toolchain Verification:** Checks for `cargo` and `rustc`.
@@ -32,11 +44,11 @@ cd linux && ./install.sh
 3. **Configuration Setup:** Initializes `~/.config/sunrise/` adhering to the XDG Base Directory specification.
 4. **Safety Backup:** Backs up your original `steam_api64.dll` to `steam_api64_original.dll`.
 5. **Path Linking:** Creates a symlink at `~/.local/bin/sunrise-linux` so the binary is available globally.
-6. **Desktop & systemd Services:** Installs a desktop shortcut and user service for background execution.
+6. **Desktop & systemd Services:** Installs a desktop shortcut at `~/Desktop/sunrise-server.desktop` and a user service for background execution.
 
 ---
 
-## Starting the Server
+## Operating the Emulation Server
 
 ### Option A: Run Directly in Terminal
 ```bash
@@ -57,6 +69,15 @@ systemctl --user stop sunrise
 
 ---
 
+## Indexing Game Packages (Optional Ahead-of-Time Caching)
+
+To scan and index all Destiny 2 package archives into `~/.config/sunrise/cache/`:
+```bash
+sunrise-linux index
+```
+
+---
+
 ## Diagnostics & Testing
 
 To verify integrity and run self-tests:
@@ -71,13 +92,22 @@ cd linux && cargo test
 
 ---
 
+## Uninstalling & Restoring Original Files
+
+To restore your original Steam API binaries and remove desktop shortcuts:
+```bash
+sunrise-linux uninstall
+```
+
+---
+
 ## Configuration Reference
 
 Settings are stored at `~/.config/sunrise/config.json`:
 
 ```json
 {
-  "version": "0.2.6",
+  "version": "0.3.0",
   "server": {
     "bind_address": "127.0.0.1",
     "port": 7777,

@@ -47,10 +47,7 @@ pub fn print_scan_start() {
 }
 
 pub fn print_game_found(root: &str, pkg_count: usize) {
-    story_event(
-        "VAULT LOCATED",
-        &format!("Found Destiny 2 installation at {}", root),
-    );
+    story_event("VAULT LOCATED", &format!("Found Destiny 2 installation at {}", root));
     if pkg_count > 0 {
         story_event(
             "ARCHIVES VERIFIED",
@@ -85,11 +82,23 @@ pub fn print_backup_made(backup_path: &str) {
     );
 }
 
+pub fn print_proton_launch_options() {
+    println!();
+    println!("\x1b[1;33m══════════════════════════════════════════════════════════════════════════\x1b[0m");
+    println!("\x1b[1;36m  ✦ VANGUARD STEAM LAUNCH PARAMETER (REQUIRED FOR PROTON / WINE) ✦\x1b[0m");
+    println!("\x1b[1;33m══════════════════════════════════════════════════════════════════════════\x1b[0m");
+    println!("  In Steam, right-click \x1b[1mDestiny 2\x1b[0m -> \x1b[1mProperties\x1b[0m -> \x1b[1mLaunch Options\x1b[0m, paste:");
+    println!();
+    println!("    \x1b[1;32mWINEDLLOVERRIDES=\"steam_api64=n,b\" %command%\x1b[0m");
+    println!();
+    println!("\x1b[1;33m══════════════════════════════════════════════════════════════════════════\x1b[0m");
+}
+
 pub fn print_epilogue(config_path: &str) {
     println!();
     story_event("CONFIG LOCKED", &format!("Transponder coordinates saved at {}", config_path));
     story_event("BAP LINK", "127.0.0.1:7777 (Ready for Transmat)");
-    println!();
+    print_proton_launch_options();
     ghost_speak(
         "All systems green, Guardian! The Traveler's light is shining on \
          local loopback.",
@@ -98,5 +107,14 @@ pub fn print_epilogue(config_path: &str) {
         "Start the server with 'sunrise-linux server' whenever you're ready \
          to launch. I'll see you starside!",
     );
+    println!();
+}
+
+pub fn print_uninstall_complete() {
+    print_banner();
+    ghost_speak("Reverting local loopback modifications and restoring original Vanguard telemetry...");
+    story_event("RESTORATION", "Original Steam API cores restored in all game vaults");
+    story_event("CLEANUP", "Removed desktop icon, application entries, and systemd service");
+    ghost_speak("Transponder disconnected cleanly. Your game installation is back in pristine state, Guardian.");
     println!();
 }

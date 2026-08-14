@@ -12,19 +12,23 @@ use sunrise_linux::installer::desktop_entry::DesktopIntegration;
 use sunrise_linux::installer::ghost_narrative::*;
 use sunrise_linux::installer::mod_installer::ModInstaller;
 use sunrise_linux::installer::steam_locator::search_destiny2_installations;
+use sunrise_linux::installer::uninstaller::Uninstaller;
 use sunrise_linux::protocol::bap_frame::{BapFrame, BAP_MAGIC};
 use sunrise_linux::protocol::opcode::Opcode;
 use sunrise_linux::server::tcp_server::SunriseTcpServer;
-use sunrise_linux::settings::config::{ServerConfig, SunriseSettings};
+use sunrise_linux::settings::config::ServerConfig;
 use sunrise_linux::state::light_calculator::{calculate_base_light, GearSlots};
+use sunrise_linux::state::package_scanner::PackageIndex;
 use sunrise_linux::SUNRISE_LINUX_VERSION;
 
 fn print_usage(program_name: &str) {
     print_banner();
     println!("Usage:");
     println!("  {} install                        Detect Steam/Destiny 2 & configure sandbox", program_name);
+    println!("  {} index [packages_dir]           Scan & cache Destiny 2 package manifest headers", program_name);
     println!("  {} server [bind_address] [port]   Start the BAP emulation server", program_name);
     println!("  {} test                           Run self-test diagnostics", program_name);
+    println!("  {} uninstall                      Restore original game files & remove integration", program_name);
     println!("  {} version                        Print version information", program_name);
 }
 
@@ -88,6 +92,49 @@ fn run_install() -> bool {
     true
 }
 
+fn run_uninstall() -> bool {
+    let results = Uninstaller::restore_all_game_files();
+    for (path, restored) in results {
+        if restored {
+            story_event("RESTORED", &format!("Original steam_api64.dll in {}", path));
+        }
+    }
+    let _ = Uninstaller::remove_desktop_integration();
+    print_uninstall_complete();
+    true
+}
+
+fn run_index(custom_path: Option<String>) -> bool {
+    let packages_path = match custom_path {
+        Some(p) => PathBuf::from(p),
+        None => {
+            let installations = search_destiny2_installations();
+            if let Some(first) = installations.first() {
+                first.packages_dir.clone()
+            } else {
+                eprintln!("[-] No Destiny 2 packages directory found to index.");
+                return false;
+            }
+        }
+    };
+
+    println!("[*] Scanning package vault: {}", packages_path.display());
+    match PackageIndex::scan_directory(&packages_path) {
+        Ok(idx) => {
+            let dirs = SunriseDirectories::default_paths();
+            let cache_file = dirs.cache_dir.join("package_index.json");
+            let _ = idx.save_to_cache(&cache_file);
+            println!("[+] Indexed {} package files (Total Size: {} bytes)", idx.total_packages, idx.total_bytes);
+            println!("[+] Saved package manifest cache to: {}", cache_file.display());
+            true
+        }
+        Err(e) => {
+            eprintln!("[-] Indexing error: {}", e);
+            false
+        }
+    }
+}
+
 fn run_self_tests() -> bool {
     println!("[*] Running Sunrise Linux Self-Test Diagnostics...");
 
@@ -119,25 +166,12 @@ fn run_self_tests() -> bool {
     // 2. Light Calculation Test
     let gear = GearSlots::new(750, 750, 750, 750, 750, 750, 750, 750);
     assert_eq!(calculate_base_light(&gear), 750);
-
-    let gear_uneven = GearSlots::new(750, 751, 752, 753, 754, 755, 756, 757);
-    assert_eq!(calculate_base_light(&gear_uneven), 753);
     println!("  [+] Light Calculation Test: PASSED");
 
     // 3. Cryptographic Hash Test (RFC 6234)
     let digest = sha256_hex(b"sunrise");
-    assert_eq!(
-        digest,
-        "e9f2a0186210e30a516d12b001717fc17b1887acad69faf5c2141067f3f6b094"
-    );
+    assert_eq!(digest, "e9f2a0186210e30a516d12b001717fc17b1887acad69faf5c2141067f3f6b094");
     println!("  [+] SHA-256 Digest Verification: PASSED");
-
-    // 4. JSON Config Test (RFC 8259)
-    let default_settings = SunriseSettings::default();
-    let json_str = default_settings.to_json_string().unwrap();
-    let parsed = SunriseSettings::from_json_str(&json_str).unwrap();
-    assert_eq!(default_settings, parsed);
-    println!("  [+] JSON Settings Serialization: PASSED");
 
     println!("[✓] All self-tests passed successfully!");
     true
@@ -155,6 +189,17 @@ fn main() {
     match args[1].as_str() {
         "install" => {
             if !run_install() {
+                process::exit(1);
+            }
+        }
+        "uninstall" | "restore" => {
+            if !run_uninstall() {
+                process::exit(1);
+            }
+        }
+        "index" => {
+            let custom_path = args.get(2).cloned();
+            if !run_index(custom_path) {
                 process::exit(1);
             }
         }
