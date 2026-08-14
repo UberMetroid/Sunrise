@@ -39,13 +39,13 @@ bool encode_response(const Message& message,
     }
 
     std::array<std::byte, kResponseSize> staged{};
-    encoding::write_u16_be(std::span(staged).first<encoding::kU16Size>(), message.opcode);
-    encoding::write_u32_be(std::span(staged).subspan<encoding::kU16Size, encoding::kU32Size>(),
+    encoding::write_u16_be(std::span<std::byte>(staged).first<encoding::kU16Size>(), message.opcode);
+    encoding::write_u32_be(std::span<std::byte>(staged).subspan<encoding::kU16Size, encoding::kU32Size>(),
                            message.transactionId);
 
     // The status value is the Family-4 version the Client waits for. This route pushes no update,
     // so the default value is right. It names a version the Client already has.
-    encoding::bits::Writer writer(std::span(staged).subspan(kEnvelopeHeaderSize));
+    encoding::bits::Writer writer(std::span<std::byte>(staged).subspan(kEnvelopeHeaderSize));
     bool encoded = status::write_fields(writer, ResponseShape::statusPair, StatusResponse{});
     encoded = encoded && writer.write(kUnusedValue, kTailIntegerWidth)
               && writer.write(kUnusedValue, kTailLongWidth)

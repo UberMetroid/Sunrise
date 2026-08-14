@@ -1,5 +1,7 @@
 #include "activity_destination_spawn_binding.h"
 
+#include <Windows.h>
+
 #include <array>
 #include <atomic>
 #include <cstddef>
@@ -15,6 +17,8 @@ namespace {
 
 /** Spawn-set rows read for one stem. The widest installed stem declares 294. */
 constexpr std::size_t kSpawnRowCapacity = 512;
+
+SRWLOCK g_spawnRowsLock{SRWLOCK_INIT};
 
 /** Last reported hash, so a per-push decision is written once. */
 std::atomic_uint32_t g_reportedHash{};
@@ -83,9 +87,15 @@ std::uint32_t attachable_spawn_set_hash(const DestinationSelection& selection,
         return hash;
     }
     const std::string_view stem(layout.spawnStem.data(), layout.spawnStemLength);
+    if (stem.empty()) {
+        return hash;
+    }
+
+    AcquireSRWLockExclusive(&g_spawnRowsLock);
     static std::array<build_data::spawn_sets::NameHash, kSpawnRowCapacity> rows{};
     std::size_t count = 0;
-    if (stem.empty() || !build_data::find_spawn_sets(stem, rows, count)) {
+    if (!build_data::find_spawn_sets(stem, rows, count)) {
+        ReleaseSRWLockExclusive(&g_spawnRowsLock);
         return hash;
     }
     for (std::size_t index = 0; index < count; ++index) {
@@ -94,11 +104,14 @@ std::uint32_t attachable_spawn_set_hash(const DestinationSelection& selection,
         }
         if (loads_package(layout, rows[index])) {
             g_reportedHash.store(0, std::memory_order_release);
+            ReleaseSRWLockExclusive(&g_spawnRowsLock);
             return hash;
         }
         report_dropped(name, hash);
+        ReleaseSRWLockExclusive(&g_spawnRowsLock);
         return kAbsentSpawnSetHash;
     }
+    ReleaseSRWLockExclusive(&g_spawnRowsLock);
     // A hash no row carries is not proof of a miss: the row set can be capped. Send it as picked.
     return hash;
 }

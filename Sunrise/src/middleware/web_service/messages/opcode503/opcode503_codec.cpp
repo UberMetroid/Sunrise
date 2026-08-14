@@ -53,11 +53,11 @@ bool encode_response(const Message& message,
         return false;
     }
     std::array<std::byte, kMaximumResponseSize> staged{};
-    encoding::write_u16_be(std::span(staged).first<encoding::kU16Size>(), message.opcode);
-    encoding::write_u32_be(std::span(staged).subspan<encoding::kU16Size, encoding::kU32Size>(),
+    encoding::write_u16_be(std::span<std::byte>(staged).first<encoding::kU16Size>(), message.opcode);
+    encoding::write_u32_be(std::span<std::byte>(staged).subspan<encoding::kU16Size, encoding::kU32Size>(),
                            message.transactionId);
 
-    encoding::bits::Writer writer(std::span(staged).subspan(kEnvelopeHeaderSize));
+    encoding::bits::Writer writer(std::span<std::byte>(staged).subspan(kEnvelopeHeaderSize));
     bool encoded = status::write_fields(writer, ResponseShape::statusPair, StatusResponse{});
     encoded = encoded && writer.write(request.primarySoid, kSoidWidth)
               && writer.write(kUnusedIntegerValue, kTopLevelIntegerWidth)

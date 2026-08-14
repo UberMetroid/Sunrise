@@ -1,4 +1,6 @@
 /build/
+/target/
+/linux/target/
 /.vs/
 /.idea/
 /.vscode/

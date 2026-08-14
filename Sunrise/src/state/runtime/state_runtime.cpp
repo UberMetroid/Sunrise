@@ -152,12 +152,15 @@ const SignOnState& sign_on() noexcept {
  * @return True when the complete token is kept for this process.
  */
 bool publish_bootstrap_token(std::span<const std::byte> token) noexcept {
+    AcquireSRWLockExclusive(&runtime::storage::g_stateLock);
     SignOnState& signOn = runtime::storage::g_state.signOn;
     if (token.size() != signOn.bootstrapToken.size()) {
+        ReleaseSRWLockExclusive(&runtime::storage::g_stateLock);
         return false;
     }
     std::copy(token.begin(), token.end(), signOn.bootstrapToken.begin());
     signOn.bootstrapTokenPresent = true;
+    ReleaseSRWLockExclusive(&runtime::storage::g_stateLock);
     return true;
 }
 
