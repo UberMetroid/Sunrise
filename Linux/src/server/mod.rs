@@ -9,9 +9,13 @@ pub mod outbound_queue;
 pub mod client_registry;
 pub mod fireteam;
 pub mod handlers;
+pub mod udp_server;
+pub mod world_state;
 
 pub use session_handler::*;
 pub use tcp_server::*;
 pub use outbound_queue::*;
 pub use client_registry::*;
 pub use fireteam::*;
+pub use udp_server::*;
+pub use world_state::*;

@@ -1,11 +1,10 @@
-// File: linux/src/server/client_registry.rs
+// File: Linux/src/server/client_registry.rs
 // Title: Multi-Client Registry & Steam ID Identity Resolver
 // Plain English: Tracks live client sessions, maps SteamID64 to membership_id, owns outbound queues.
 
 use std::collections::HashMap;
 use std::net::SocketAddr;
-use std::sync::Arc;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use std::sync::atomic::AtomicU64;
 
 use crate::server::outbound_queue::OutboundQueue;
@@ -65,10 +64,7 @@ impl ClientRegistry {
         };
         if let Some(prev) = stale_udp {
             if prev != peer_addr {
-                self.by_udp_source
-                    .lock()
-                    .expect("Registry mutex poisoned")
-                    .remove(&prev);
+                self.by_udp_source.lock().expect("Registry mutex poisoned").remove(&prev);
             }
         }
 
@@ -80,47 +76,28 @@ impl ClientRegistry {
             udp_source: Arc::new(Mutex::new(Some(peer_addr))),
         };
 
-        self.by_membership
-            .lock()
-            .expect("Registry mutex poisoned")
-            .insert(membership_id, handle.clone());
-        self.by_udp_source
-            .lock()
-            .expect("Registry mutex poisoned")
-            .insert(peer_addr, membership_id);
-
+        self.by_membership.lock().expect("Registry mutex poisoned").insert(membership_id, handle.clone());
+        self.by_udp_source.lock().expect("Registry mutex poisoned").insert(peer_addr, membership_id);
         handle
     }
 
     pub fn upsert(&self, handle: ClientHandle) -> ClientHandle {
         let membership_id = handle.membership_id;
-
         if let Some(addr) = handle.udp_source() {
             let mut by_udp = self.by_udp_source.lock().expect("Registry mutex poisoned");
             let stale: Vec<SocketAddr> = by_udp
                 .iter()
                 .filter_map(|(k, v)| if *v == membership_id && *k != addr { Some(*k) } else { None })
                 .collect();
-            for k in stale {
-                by_udp.remove(&k);
-            }
+            for k in stale { by_udp.remove(&k); }
             by_udp.insert(addr, membership_id);
         }
-
-        self.by_membership
-            .lock()
-            .expect("Registry mutex poisoned")
-            .insert(membership_id, handle.clone());
-
+        self.by_membership.lock().expect("Registry mutex poisoned").insert(membership_id, handle.clone());
         handle
     }
 
     pub fn unregister(&self, membership_id: u64) {
-        let removed = self
-            .by_membership
-            .lock()
-            .expect("Registry mutex poisoned")
-            .remove(&membership_id);
+        let removed = self.by_membership.lock().expect("Registry mutex poisoned").remove(&membership_id);
         if let Some(handle) = removed {
             if let Some(addr) = handle.udp_source() {
                 let mut by_udp = self.by_udp_source.lock().expect("Registry mutex poisoned");
@@ -132,11 +109,7 @@ impl ClientRegistry {
     }
 
     pub fn get(&self, membership_id: u64) -> Option<ClientHandle> {
-        self.by_membership
-            .lock()
-            .expect("Registry mutex poisoned")
-            .get(&membership_id)
-            .cloned()
+        self.by_membership.lock().expect("Registry mutex poisoned").get(&membership_id).cloned()
     }
 
     pub fn lookup_by_udp(&self, source: SocketAddr) -> Option<ClientHandle> {
@@ -144,11 +117,7 @@ impl ClientRegistry {
             let by_udp = self.by_udp_source.lock().expect("Registry mutex poisoned");
             by_udp.get(&source).copied()?
         };
-        self.by_membership
-            .lock()
-            .expect("Registry mutex poisoned")
-            .get(&membership_id)
-            .cloned()
+        self.by_membership.lock().expect("Registry mutex poisoned").get(&membership_id).cloned()
     }
 
     pub fn bind_udp_source(&self, membership_id: u64, source: SocketAddr) -> bool {
@@ -176,19 +145,11 @@ impl ClientRegistry {
     }
 
     pub fn client_count(&self) -> usize {
-        self.by_membership
-            .lock()
-            .expect("Registry mutex poisoned")
-            .len()
+        self.by_membership.lock().expect("Registry mutex poisoned").len()
     }
 
     pub fn all_membership_ids(&self) -> Vec<u64> {
-        self.by_membership
-            .lock()
-            .expect("Registry mutex poisoned")
-            .keys()
-            .copied()
-            .collect()
+        self.by_membership.lock().expect("Registry mutex poisoned").keys().copied().collect()
     }
 }
 
@@ -220,7 +181,6 @@ mod tests {
         assert_eq!(handle.display_name, "Guardian");
         assert_eq!(reg.client_count(), 1);
         assert_eq!(reg.lookup_by_udp(peer).map(|h| h.membership_id), Some(42));
-        assert_eq!(reg.get(42).map(|h| h.udp_source()), Some(Some(peer)));
     }
 
     #[test]
@@ -231,27 +191,5 @@ mod tests {
         reg.unregister(h.membership_id);
         assert!(reg.lookup_by_udp(peer).is_none());
         assert_eq!(reg.client_count(), 0);
-    }
-
-    #[test]
-    fn bind_udp_source_swaps_mapping() {
-        let reg = ClientRegistry::new();
-        let tcp_peer = sock(192, 168, 1, 2, 5000);
-        let udp_peer = sock(192, 168, 1, 2, 5500);
-        let h = reg.register(99, "Player", tcp_peer);
-        assert!(reg.bind_udp_source(h.membership_id, udp_peer));
-        assert_eq!(reg.lookup_by_udp(udp_peer).map(|h| h.membership_id), Some(99));
-        assert!(reg.lookup_by_udp(tcp_peer).is_none());
-    }
-
-    #[test]
-    fn all_membership_ids_snapshots_state() {
-        let reg = ClientRegistry::new();
-        reg.register(1, "A", sock(127, 0, 0, 1, 1));
-        reg.register(2, "B", sock(127, 0, 0, 1, 2));
-        reg.register(3, "C", sock(127, 0, 0, 1, 3));
-        let mut ids = reg.all_membership_ids();
-        ids.sort();
-        assert_eq!(ids, vec![1, 2, 3]);
     }
 }

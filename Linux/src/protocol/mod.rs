@@ -6,7 +6,11 @@
 pub mod opcode;
 pub mod bap_frame;
 pub mod envelope;
+pub mod udp_magic;
+pub mod udp_packet;
 
 pub use opcode::*;
 pub use bap_frame::*;
 pub use envelope::*;
+pub use udp_magic::*;
+pub use udp_packet::*;
