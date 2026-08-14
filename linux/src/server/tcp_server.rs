@@ -1,10 +1,10 @@
 // File: linux/src/server/tcp_server.rs
-// Title: TCP BAP Server
+// Title: TCP BAP Server with Live Connection Telemetry
 // RFC Reference: RFC 793 (Transmission Control Protocol)
-// Plain English: Listens on a TCP port and executes request/response loops with game clients.
+// Plain English: Listens on a TCP port and outputs live connection & frame logs to the terminal.
 
 use std::io::{Read, Write};
-use std::net::{TcpListener, TcpStream};
+use std::net::{SocketAddr, TcpListener, TcpStream};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::thread;
@@ -46,13 +46,16 @@ impl SunriseTcpServer {
             .map_err(|e| SunriseError::IoError(e.to_string()))?;
 
         self.is_running.store(true, Ordering::SeqCst);
+        println!("\x1b[1;32m[✓] BAP Emulation Server listening on {}\x1b[0m", bind_addr);
+        println!("\x1b[1;33m[*] Waiting for Guardian connections from game client...\x1b[0m\n");
 
         while self.is_running.load(Ordering::SeqCst) {
             match listener.accept() {
-                Ok((stream, _)) => {
+                Ok((stream, peer_addr)) => {
                     let running_flag = Arc::clone(&self.is_running);
+                    println!("\x1b[1;36m[+] Guardian connected from {}\x1b[0m", peer_addr);
                     thread::spawn(move || {
-                        let _ = Self::handle_connection(stream, running_flag);
+                        let _ = Self::handle_connection(stream, peer_addr, running_flag);
                     });
                 }
                 Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
@@ -67,7 +70,11 @@ impl SunriseTcpServer {
         Ok(())
     }
 
-    fn handle_connection(mut stream: TcpStream, is_running: Arc<AtomicBool>) -> Result<()> {
+    fn handle_connection(
+        mut stream: TcpStream,
+        peer_addr: SocketAddr,
+        is_running: Arc<AtomicBool>,
+    ) -> Result<()> {
         stream.set_read_timeout(Some(Duration::from_secs(5)))?;
         stream.set_write_timeout(Some(Duration::from_secs(5)))?;
 
@@ -76,7 +83,7 @@ impl SunriseTcpServer {
 
         while is_running.load(Ordering::SeqCst) {
             let bytes_read = match stream.read(&mut buffer) {
-                Ok(0) => break, // EOF / connection closed
+                Ok(0) => break, // EOF / client closed connection
                 Ok(n) => n,
                 Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
                     thread::sleep(Duration::from_millis(5));
@@ -91,6 +98,13 @@ impl SunriseTcpServer {
                 match BapFrame::decode(&buffer[cursor..bytes_read]) {
                     Ok((frame, consumed)) => {
                         cursor += consumed;
+                        println!(
+                            "  \x1b[38;5;51m✦\x1b[0m \x1b[1m[Session {}]\x1b[0m Handled Opcode: \x1b[1;33m{:?}\x1b[0m (Tx: {}, Payload: {} bytes)",
+                            session.account.membership_id,
+                            frame.opcode,
+                            frame.transaction_id,
+                            frame.payload.len()
+                        );
                         let response_frame = session.handle_frame(&frame)?;
                         let response_bytes = response_frame.to_bytes()?;
                         stream.write_all(&response_bytes)?;
@@ -101,6 +115,7 @@ impl SunriseTcpServer {
             }
         }
 
+        println!("\x1b[1;31m[-] Guardian disconnected ({})\x1b[0m", peer_addr);
         Ok(())
     }
 }
