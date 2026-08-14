@@ -17,6 +17,7 @@ pub mod state;
 pub mod settings;
 pub mod server;
 pub mod installer;
+pub mod tui;
 
 pub use error::{Result, SunriseError};
 pub use encoding::*;
@@ -26,5 +27,6 @@ pub use state::*;
 pub use settings::*;
 pub use server::*;
 pub use installer::*;
+pub use tui::*;
 
-pub const SUNRISE_LINUX_VERSION: &str = "0.3.3";
+pub const SUNRISE_LINUX_VERSION: &str = "0.4.0";

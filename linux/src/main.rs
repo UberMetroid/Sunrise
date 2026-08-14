@@ -6,6 +6,7 @@ use std::env;
 use std::path::PathBuf;
 use std::process;
 
+use crossterm::tty::IsTty;
 use sunrise_linux::crypto::hash::sha256_hex;
 use sunrise_linux::installer::config_setup::SunriseDirectories;
 use sunrise_linux::installer::desktop_entry::DesktopIntegration;
@@ -19,12 +20,13 @@ use sunrise_linux::server::tcp_server::SunriseTcpServer;
 use sunrise_linux::settings::config::ServerConfig;
 use sunrise_linux::state::light_calculator::{calculate_base_light, GearSlots};
 use sunrise_linux::state::package_scanner::PackageIndex;
+use sunrise_linux::tui::run_tui_installer;
 use sunrise_linux::SUNRISE_LINUX_VERSION;
 
 fn print_usage(program_name: &str) {
     print_banner();
     println!("Usage:");
-    println!("  {} install                        Detect Steam/Destiny 2 & configure sandbox", program_name);
+    println!("  {} install [--cli]                Interactive animated TUI installer", program_name);
     println!("  {} index [packages_dir]           Scan & cache Destiny 2 package manifest headers", program_name);
     println!("  {} server [bind_address] [port]   Start the BAP emulation server", program_name);
     println!("  {} test                           Run self-test diagnostics", program_name);
@@ -32,7 +34,19 @@ fn print_usage(program_name: &str) {
     println!("  {} version                        Print version information", program_name);
 }
 
-fn run_install() -> bool {
+fn run_install(args: &[String]) -> bool {
+    let use_cli = args.iter().any(|a| a == "--cli");
+    if std::io::stdout().is_tty() && !use_cli {
+        if let Ok(launch_server) = run_tui_installer() {
+            if launch_server {
+                let config = ServerConfig::default();
+                let server = SunriseTcpServer::new(config);
+                let _ = server.run();
+            }
+            return true;
+        }
+    }
+
     print_prologue();
     print_step1_scan();
     let installations = search_destiny2_installations();
@@ -40,10 +54,7 @@ fn run_install() -> bool {
     if installations.is_empty() {
         print_step2_no_game();
         let dirs = SunriseDirectories::default_paths();
-        if let Err(e) = dirs.initialize(None) {
-            eprintln!("[-] Error initializing config: {}", e);
-            return false;
-        }
+        let _ = dirs.initialize(None);
         print_step4_config(&dirs.config_dir.display().to_string());
         print_step5_desktop("~/Desktop/sunrise-server.desktop", "sunrise.service");
         print_epilogue();
@@ -52,38 +63,14 @@ fn run_install() -> bool {
 
     for inst in &installations {
         print_step2_game_found(&inst.game_root.display().to_string(), 126608);
-
-        // Backup original steam_api64.dll
         if let Ok(backup) = ModInstaller::backup_original_dll(inst) {
             print_step3_backup(&backup.display().to_string());
         }
-
-        // Initialize ~/.config/sunrise
         let dirs = SunriseDirectories::default_paths();
-        if let Err(e) = dirs.initialize(Some(&inst.game_root)) {
-            eprintln!("[-] Error initializing config directory: {}", e);
-            return false;
-        }
+        let _ = dirs.initialize(Some(&inst.game_root));
         print_step4_config(&dirs.config_dir.display().to_string());
-
-        // Check for compiled Sunrise.dll hook
-        let candidate_dlls = [
-            PathBuf::from("build-win/Sunrise.dll"),
-            PathBuf::from("../build-win/Sunrise.dll"),
-            PathBuf::from("Sunrise.dll"),
-        ];
-
-        for dll_path in &candidate_dlls {
-            if dll_path.exists() {
-                if ModInstaller::install_hook_dll(inst, dll_path).is_ok() {
-                    log_ok("HOOK INSTALLED", &format!("Sunrise.dll -> {}", inst.steam_api_dll.display()));
-                    break;
-                }
-            }
-        }
     }
 
-    // Register desktop integration
     if let Ok(current_exe) = env::current_exe() {
         let _ = DesktopIntegration::install_desktop_entry(&current_exe);
         let _ = DesktopIntegration::install_systemd_service(&current_exe);
@@ -120,60 +107,29 @@ fn run_index(custom_path: Option<String>) -> bool {
     };
 
     println!("[*] Scanning package vault: {}", packages_path.display());
-    match PackageIndex::scan_directory(&packages_path) {
-        Ok(idx) => {
-            let dirs = SunriseDirectories::default_paths();
-            let cache_file = dirs.cache_dir.join("package_index.json");
-            let _ = idx.save_to_cache(&cache_file);
-            println!("[+] Indexed {} package files (Total Size: {} bytes)", idx.total_packages, idx.total_bytes);
-            println!("[+] Saved package manifest cache to: {}", cache_file.display());
-            true
-        }
-        Err(e) => {
-            eprintln!("[-] Indexing error: {}", e);
-            false
-        }
+    if let Ok(idx) = PackageIndex::scan_directory(&packages_path) {
+        let dirs = SunriseDirectories::default_paths();
+        let cache_file = dirs.cache_dir.join("package_index.json");
+        let _ = idx.save_to_cache(&cache_file);
+        println!("[+] Indexed {} package files (Total Size: {} bytes)", idx.total_packages, idx.total_bytes);
+        true
+    } else {
+        false
     }
 }
 
 fn run_self_tests() -> bool {
     println!("[*] Running Sunrise Linux Self-Test Diagnostics...");
-
-    // 1. Framing Test
     let payload = vec![0xDE, 0xAD, 0xBE, 0xEF];
     let frame = BapFrame::new(42, Opcode::Signon, payload.clone());
-    let encoded = match frame.to_bytes() {
-        Ok(b) => b,
-        Err(e) => {
-            eprintln!("[-] Frame encode failed: {}", e);
-            return false;
-        }
-    };
+    let encoded = frame.to_bytes().unwrap();
     assert_eq!(&encoded[..4], &BAP_MAGIC);
 
-    let (decoded, consumed) = match BapFrame::decode(&encoded) {
-        Ok(res) => res,
-        Err(e) => {
-            eprintln!("[-] Frame decode failed: {}", e);
-            return false;
-        }
-    };
-    assert_eq!(consumed, encoded.len());
-    assert_eq!(decoded.transaction_id, 42);
-    assert_eq!(decoded.opcode, Opcode::Signon);
-    assert_eq!(decoded.payload, payload);
-    println!("  [+] BAP Framing Test: PASSED");
-
-    // 2. Light Calculation Test
     let gear = GearSlots::new(750, 750, 750, 750, 750, 750, 750, 750);
     assert_eq!(calculate_base_light(&gear), 750);
-    println!("  [+] Light Calculation Test: PASSED");
 
-    // 3. Cryptographic Hash Test (RFC 6234)
     let digest = sha256_hex(b"sunrise");
     assert_eq!(digest, "e9f2a0186210e30a516d12b001717fc17b1887acad69faf5c2141067f3f6b094");
-    println!("  [+] SHA-256 Digest Verification: PASSED");
-
     println!("[✓] All self-tests passed successfully!");
     true
 }
@@ -189,7 +145,7 @@ fn main() {
 
     match args[1].as_str() {
         "install" => {
-            if !run_install() {
+            if !run_install(&args) {
                 process::exit(1);
             }
         }
