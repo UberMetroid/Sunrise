@@ -1,12 +1,17 @@
 // File: linux/src/installer/mod_installer.rs
-// Title: Client DLL Backup & Hook Installer
-// Plain English: Backs up original steam_api64.dll and places Sunrise.dll in the game directory.
+// Title: Client DLL Backup & Automated Hook Installer
+// Plain English: Backs up original steam_api64.dll and installs the Project Sunrise proxy hook.
 
+use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::process::Command;
 
 use crate::error::{Result, SunriseError};
-use crate::installer::steam_locator::Destiny2Paths;
+use crate::installer::steam_locator::{get_home_dir, Destiny2Paths};
+
+pub const DEFAULT_HOOK_URL: &str =
+    "https://github.com/stanuwu/Sunrise/releases/latest/download/steam_api64.dll";
 
 pub struct ModInstaller;
 
@@ -31,6 +36,49 @@ impl ModInstaller {
         Ok(original_backup)
     }
 
+    pub fn resolve_hook_dll() -> Result<PathBuf> {
+        let home = get_home_dir();
+        let cache_dll = home.join(".config").join("sunrise").join("steam_api64.dll");
+
+        let candidates = [
+            PathBuf::from("build-win/Sunrise.dll"),
+            PathBuf::from("../build-win/Sunrise.dll"),
+            PathBuf::from("Sunrise.dll"),
+            cache_dll.clone(),
+        ];
+
+        for path in &candidates {
+            if path.exists() {
+                return Ok(path.clone());
+            }
+        }
+
+        // If not found locally, download official release artifact
+        let download_url = env::var("SUNRISE_HOOK_URL")
+            .unwrap_or_else(|_| DEFAULT_HOOK_URL.to_string());
+
+        if let Some(parent) = cache_dll.parent() {
+            let _ = fs::create_dir_all(parent);
+        }
+
+        let status = Command::new("curl")
+            .arg("-fsSL")
+            .arg(&download_url)
+            .arg("-o")
+            .arg(&cache_dll)
+            .status()
+            .map_err(|e| SunriseError::IoError(format!("Failed to spawn curl: {}", e)))?;
+
+        if !status.success() || !cache_dll.exists() {
+            return Err(SunriseError::IoError(format!(
+                "Failed to download Sunrise proxy DLL from {}",
+                download_url
+            )));
+        }
+
+        Ok(cache_dll)
+    }
+
     pub fn install_hook_dll(paths: &Destiny2Paths, sunrise_dll_path: impl AsRef<Path>) -> Result<()> {
         let src_dll = sunrise_dll_path.as_ref();
         if !src_dll.exists() {
@@ -42,12 +90,19 @@ impl ModInstaller {
         // Ensure original is backed up first
         Self::backup_original_dll(paths)?;
 
-        // Copy Sunrise.dll as steam_api64.dll
+        // Copy Sunrise proxy DLL as steam_api64.dll
         fs::copy(src_dll, &paths.steam_api_dll).map_err(|e| {
-            SunriseError::IoError(format!("Failed to install Sunrise.dll: {}", e))
+            SunriseError::IoError(format!("Failed to install proxy steam_api64.dll: {}", e))
         })?;
 
         Ok(())
+    }
+
+    pub fn ensure_proxy_hook(paths: &Destiny2Paths) -> Result<PathBuf> {
+        Self::backup_original_dll(paths)?;
+        let hook_src = Self::resolve_hook_dll()?;
+        Self::install_hook_dll(paths, &hook_src)?;
+        Ok(paths.steam_api_dll.clone())
     }
 
     pub fn restore_original_dll(paths: &Destiny2Paths) -> Result<()> {

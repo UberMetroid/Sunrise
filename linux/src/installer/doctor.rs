@@ -1,6 +1,6 @@
 // File: linux/src/installer/doctor.rs
 // Title: Sunrise Linux Doctor & Health Diagnostics
-// Plain English: Inspects system health, game archives, port availability, and running daemon status.
+// Plain English: Inspects system health, game archives, proxy hook status, and port availability.
 
 use std::net::TcpStream;
 
@@ -49,12 +49,22 @@ impl SunriseDoctor {
                 all_healthy = false;
             }
 
-            // 2. Check Backup DLL
+            // 2. Check Backup DLL & Proxy Hook
             let backup_path = first.bin_x64_dir.join("steam_api64_original.dll");
             if backup_path.exists() {
                 log_ok("CORE SAFEGUARD", "Original steam_api64_original.dll intact");
             } else {
                 log_scan("CORE SAFEGUARD", "No backup DLL found (run 'sunrise-linux install')");
+            }
+
+            if first.steam_api_dll.exists() {
+                let orig_len = backup_path.metadata().map(|m| m.len()).unwrap_or(0);
+                let cur_len = first.steam_api_dll.metadata().map(|m| m.len()).unwrap_or(0);
+                if orig_len > 0 && cur_len != orig_len {
+                    log_ok("PROXY HOOK", "Project Sunrise steam_api64.dll is ACTIVE");
+                } else {
+                    log_scan("PROXY HOOK", "Vanilla DLL active (run 'sunrise-linux install')");
+                }
             }
         } else {
             log_scan("DESTINY 2 VAULT", "No standard installation detected in Steam paths");
@@ -73,8 +83,8 @@ impl SunriseDoctor {
         // 4. Check Desktop Shortcuts & Icons
         let home = get_home_dir();
         let icon_file = home.join(".local/share/icons/hicolor/scalable/apps/sunrise.svg");
-        let desktop_file = home.join("Desktop/sunrise-server.desktop");
-        let menu_file = home.join(".local/share/applications/sunrise-server.desktop");
+        let desktop_file = home.join("Desktop/destiny2-sunrise.desktop");
+        let menu_file = home.join(".local/share/applications/destiny2-sunrise.desktop");
 
         if icon_file.exists() {
             log_ok("VECTOR ICON", &icon_file.display().to_string());

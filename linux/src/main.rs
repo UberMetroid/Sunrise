@@ -1,6 +1,6 @@
 // File: linux/src/main.rs
 // Title: Sunrise Linux Server & Comprehensive CLI Dispatcher
-// Plain English: Command-line interface with help, doctor diagnostics, daemon status, and server runner.
+// Plain English: Command-line interface with automated proxy hook installation and diagnostics.
 
 use std::env;
 use std::path::PathBuf;
@@ -27,7 +27,7 @@ fn print_usage(program_name: &str) {
     println!("Project Sunrise // Linux Vanguard Emulation Suite (v{})", SUNRISE_LINUX_VERSION);
     println!("Usage: {} <COMMAND> [OPTIONS]\n", program_name);
     println!("Commands:");
-    println!("  install [--yes / -y]              Interactive animated installer with component prompts");
+    println!("  install [--yes / -y]              Interactive installer (downloads & sets up proxy hook)");
     println!("  server [bind_address] [port]      Start the BAP emulation server (default: 127.0.0.1:7777)");
     println!("  status                            Check if local server daemon is actively listening");
     println!("  doctor | check                    Run comprehensive system & game vault diagnostics");
@@ -48,7 +48,7 @@ fn run_install(args: &[String]) -> bool {
         prompt_confirm("Install Sunrise Linux Emulation Server & ~/.config sandbox?", true)
     };
     let install_desktop = if auto_yes { true } else {
-        prompt_confirm("Install Destiny 2 Desktop & Steam shortcut integration?", true)
+        prompt_confirm("Install Destiny 2 Desktop & Steam proxy hook integration?", true)
     };
 
     if !install_server && !install_desktop {
@@ -72,11 +72,18 @@ fn run_install(args: &[String]) -> bool {
     }
     animate_progress("Vault Verification Complete", 25, 50);
 
-    step_header(3, 4, "CONFIGURING SANDBOX & CORE TELEMETRY");
+    step_header(3, 4, "CONFIGURING SANDBOX & CLIENT PROXY HOOK");
     if install_desktop {
         for inst in &installations {
-            if let Ok(backup) = ModInstaller::backup_original_dll(inst) {
-                log_ok("BACKUP SECURED", &backup.display().to_string());
+            animate_spinner("Retrieving Project Sunrise steam_api64.dll proxy core...", 800);
+            match ModInstaller::ensure_proxy_hook(inst) {
+                Ok(dest) => {
+                    log_ok("PROXY CORE", &format!("Installed hook -> {}", dest.display()));
+                    ghost_dialogue("\"Translocated Project Sunrise proxy core into bin/x64/steam_api64.dll.\n All game network traffic is now routed to your local server sandbox.\"");
+                }
+                Err(e) => {
+                    eprintln!("[-] Failed to install proxy hook: {}", e);
+                }
             }
         }
     }
@@ -87,14 +94,14 @@ fn run_install(args: &[String]) -> bool {
         log_ok("ENTITLEMENTS", "Auto-unlock enabled for all seasons and expansions");
         log_ok("ENDPOINT", "Bound to local loopback (127.0.0.1:7777)");
     }
-    animate_progress("Sandbox Configured", 50, 75);
+    animate_progress("Sandbox & Proxy Configured", 50, 75);
 
     step_header(4, 4, "SYSTEM INTEGRATION & WORKSPACE SHORTCUTS");
     if let Ok(current_exe) = env::current_exe() {
         if install_desktop {
             let _ = DesktopIntegration::install_desktop_entry(&current_exe);
             log_ok("APP ICON", "Installed custom vector Ghost icon to icon theme");
-            log_ok("DESKTOP ICON", "~/Desktop/sunrise-server.desktop");
+            log_ok("DESKTOP LAUNCHER", "~/Desktop/destiny2-sunrise.desktop");
         }
         if install_server {
             let _ = DesktopIntegration::install_systemd_service(&current_exe);
