@@ -117,7 +117,8 @@ pub fn animate_progress(step_name: &str, from_pct: usize, to_pct: usize) {
 
 pub fn prompt_confirm(question: &str, default_yes: bool) -> bool {
     let suffix = if default_yes { "[Y/n]" } else { "[y/N]" };
-    print!("  \x1b[1;33m[?]\x1b[0m \x1b[1m{} \x1b[1;36m{}\x1b[0m: ", question, suffix);
+    // Ensure previous spinner/progress \r is cleared before prompt
+    print!("\r\x1b[K  \x1b[1;33m[?]\x1b[0m \x1b[1m{}\x1b[0m \x1b[1;36m{}\x1b[0m: ", question, suffix);
     let _ = io::stdout().flush();
 
     let mut input = String::new();
@@ -157,8 +158,36 @@ pub fn print_epilogue(has_desktop: bool) {
     }
     println!();
     ghost_dialogue(
-        "\"All selected systems are green, Guardian! The Traveler's light is shining on local loopback. Launch 'sunrise-linux server' whenever you're ready to transmat into the sandbox. I'll see you starside!\"",
+        "\"All selected systems are green, Guardian! The Traveler's light \
+         is shining on local loopback. Launch 'sunrise-linux server' \
+         whenever you're ready to transmat into the sandbox. \
+         I'll see you starside!\"",
     );
+    // Where to find what was installed — prevents "no instructions" UX gap
+    let home = crate::installer::steam_locator::get_home_dir();
+    println!("\n\x1b[1;32m[INSTALLED LOCATIONS]\x1b[0m");
+    println!("  Desktop (App Menu search \"Sunrise\"):");
+    println!("    - Sunrise Server : {}/.local/share/applications/sunrise-server.desktop",
+        home.display());
+    println!("    - Destiny 2      : {}/.local/share/applications/destiny2-sunrise.desktop",
+        home.display());
+    println!("    - Icon           : {}/.local/share/icons/hicolor/scalable/apps/sunrise.svg",
+        home.display());
+    println!("    - Wrapper        : {}/.local/bin/sunrise-game", home.display());
+    println!("  Daemon:");
+    println!("    - Service        : {}/.config/systemd/user/sunrise.service", home.display());
+    println!("    - Config         : {}/.config/sunrise/config.json", home.display());
+    println!("\n\x1b[1;36m[HOW TO USE — CLI]\x1b[0m");
+    println!("  \x1b[1msunrise-linux server [addr] [port]\x1b[0m  default 127.0.0.1:7777");
+    println!("    env: SUNRISE_BIND_ADDRESS / SUNRISE_PORT");
+    println!("    udp: SUNRISE_UDP_BIND / SUNRISE_UDP_PORT (default 7778)");
+    println!("  \x1b[1msunrise-linux status\x1b[0m / \x1b[1mdoctor\x1b[0m   vault & port diagnostics");
+    println!("  \x1b[1msunrise-linux test\x1b[0m                crypto/protocol self-test");
+    println!("  \x1b[1msunrise-linux sync-manifest\x1b[0m       opt-in Bungie (anonymous)");
+    println!("  \x1b[1msunrise-linux index [dir]\x1b[0m         cache package headers");
+    println!("  \x1b[1msunrise-linux uninstall\x1b[0m           restore vanilla DLLs");
+    println!("\n  Quick start: \x1b[1;32msunrise-linux server\x1b[0m then \x1b[1;32msunrise-game\x1b[0m");
+    println!("  Or: \x1b[1;32msteam steam://rungameid/1085660\x1b[0m");
     println!();
 }
 

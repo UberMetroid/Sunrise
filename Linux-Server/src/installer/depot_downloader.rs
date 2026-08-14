@@ -167,14 +167,14 @@ impl DepotDownloader {
             return Ok(());
         }
 
-        print!("  \x1b[1;33m[?]\x1b[0m \x1b[1mSelect scope [1/2/3] (default: 1)\x1b[0m: ");
+        print!("\r\x1b[K  \x1b[1;33m[?]\x1b[0m \x1b[1mSelect scope [1/2/3] (default: 1)\x1b[0m: ");
         let _ = std::io::Write::flush(&mut std::io::stdout());
 
         let mut scope = String::new();
         let _ = std::io::stdin().read_line(&mut scope);
         let scope = scope.trim();
 
-        print!("  \x1b[1;33m[?]\x1b[0m \x1b[1mEnter Steam Username (or press Enter for command help)\x1b[0m: ");
+        print!("\r\x1b[K  \x1b[1;33m[?]\x1b[0m \x1b[1mEnter Steam Username (or press Enter for command help)\x1b[0m: ");
         let _ = std::io::Write::flush(&mut std::io::stdout());
 
         let mut username = String::new();

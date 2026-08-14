@@ -85,6 +85,18 @@ exec steam steam://rungameid/1085660
         fs::create_dir_all(&apps_dir)
             .map_err(|e| SunriseError::IoError(format!("Failed to create applications dir: {}", e)))?;
 
+        // Always use stable symlink so Exec survives rebuilds;
+        // create it if missing (install.sh also creates it).
+        let stable_bin = home.join(".local/bin/sunrise-linux");
+        let exec_bin = stable_bin.to_string_lossy().to_string();
+        if !stable_bin.exists() {
+            let _ = std::os::unix::fs::symlink(
+                binary_path.as_ref(),
+                &stable_bin,
+            );
+        }
+        let _ = binary_path;
+
         // 1. Sunrise Emulation Server Launcher (Start Menu)
         let server_content = format!(
             "[Desktop Entry]\n\
@@ -95,7 +107,7 @@ exec steam steam://rungameid/1085660
              Terminal=true\n\
              Type=Application\n\
              Categories=Game;Development;\n",
-            binary_path.as_ref().to_string_lossy()
+            exec_bin
         );
 
         // 2. Destiny 2 Game Launcher (Start Menu)
@@ -115,8 +127,20 @@ exec steam steam://rungameid/1085660
         let game_menu = apps_dir.join("destiny2-sunrise.desktop");
         fs::write(&server_menu, &server_content)
             .map_err(|e| SunriseError::IoError(format!("Failed to write server menu entry: {}", e)))?;
+        let _ = fs::set_permissions(&server_menu, fs::Permissions::from_mode(0o644));
         fs::write(&game_menu, &game_content)
             .map_err(|e| SunriseError::IoError(format!("Failed to write game menu entry: {}", e)))?;
+        let _ = fs::set_permissions(&game_menu, fs::Permissions::from_mode(0o644));
+
+        // Refresh desktop database if available (no-op if missing)
+        let _ = Command::new("update-desktop-database")
+            .arg(&apps_dir)
+            .status();
+        let _ = Command::new("gtk-update-icon-cache")
+            .arg("-f")
+            .arg("-t")
+            .arg(home.join(".local/share/icons/hicolor"))
+            .status();
 
         Ok(())
     }
@@ -126,6 +150,16 @@ exec steam steam://rungameid/1085660
         let service_dir = home.join(".config").join("systemd").join("user");
         fs::create_dir_all(&service_dir)
             .map_err(|e| SunriseError::IoError(format!("Failed to create systemd user dir: {}", e)))?;
+
+        let stable_bin = home.join(".local/bin/sunrise-linux");
+        let exec_bin = stable_bin.to_string_lossy().to_string();
+        if !stable_bin.exists() {
+            let _ = std::os::unix::fs::symlink(
+                binary_path.as_ref(),
+                &stable_bin,
+            );
+        }
+        let _ = binary_path;
 
         let service_file = service_dir.join("sunrise.service");
         let content = format!(
@@ -138,7 +172,7 @@ exec steam steam://rungameid/1085660
              Restart=on-failure\n\n\
              [Install]\n\
              WantedBy=default.target\n",
-            binary_path.as_ref().to_string_lossy()
+            exec_bin
         );
 
         fs::write(service_file, content)

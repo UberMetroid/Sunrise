@@ -27,11 +27,21 @@ RESET="\033[0m"
 
 ghost_box() {
     local text="$1"
-    echo -e "${YELLOW}╭─ Ghost ─────────────────────────────────────────────────────────────╮${RESET}"
-    echo -e "$text" | fold -s -w 66 | while IFS= read -r line; do
-        echo -e "  ${WHITE}${line}${RESET}"
-    done
-    echo -e "${YELLOW}╰─────────────────────────────────────────────────────────────────────╯${RESET}"
+    # Portable Ghost box — ASCII fallback for C/TTY locales,
+    # UTF-8 when locale supports it (prevents ?/M-? mojibake).
+    if locale charmap 2>/dev/null | grep -qi "UTF-8"; then
+        echo -e "${YELLOW}╭─ Ghost ───────────────────────────────╮${RESET}"
+        echo -e "$text" | fold -s -w 66 | while IFS= read -r l; do
+            echo -e "  ${WHITE}${l}${RESET}"
+        done
+        echo -e "${YELLOW}╰───────────────────────────────────────╯${RESET}"
+    else
+        echo -e "${YELLOW}+-- Ghost --------------------------------+${RESET}"
+        echo -e "$text" | fold -s -w 66 | while IFS= read -r l; do
+            echo -e "  ${WHITE}${l}${RESET}"
+        done
+        echo -e "${YELLOW}+---------------------------------------+${RESET}"
+    fi
 }
 
 echo -e "${CYAN}"
@@ -180,8 +190,31 @@ fi
 echo -e "${GREEN}=======================================================================${RESET}"
 echo -e "${GREEN}  TRANSMAT STATUS: READY TO LAUNCH                                     ${RESET}"
 echo -e "${GREEN}=======================================================================${RESET}"
-echo -e "  Launch Terminal Server:   ${CYAN}sunrise-linux server${RESET}"
-echo -e "  Launch Background Daemon: ${CYAN}systemctl --user start sunrise${RESET}"
-echo -e "  Launch Destiny 2 Wrapper: ${CYAN}sunrise-game${RESET}"
-echo -e "  Inspect Live Logs:        ${CYAN}journalctl --user -u sunrise -f${RESET}"
+echo -e "  ${WHITE}Desktop launchers (App Menu search: \"Sunrise\"):${RESET}"
+echo -e "    ${CYAN}Sunrise Emulation Server${RESET} ->"
+echo -e "      ${DIM}~/.local/share/applications/sunrise-server.desktop${RESET}"
+echo -e "      (Exec: ${DIM}~/.local/bin/sunrise-linux server${RESET})"
+echo -e "    ${CYAN}Destiny 2 (Project Sunrise)${RESET} ->"
+echo -e "      ${DIM}~/.local/share/applications/destiny2-sunrise.desktop${RESET}"
+echo -e "      (Exec: ${DIM}~/.local/bin/sunrise-game${RESET})"
+echo -e "    Icon: ${DIM}~/.local/share/icons/hicolor/scalable/apps/sunrise.svg${RESET}"
+echo -e "  ${WHITE}Systemd daemon:${RESET}"
+echo -e "    ${DIM}~/.config/systemd/user/sunrise.service${RESET}"
+echo -e "    ${CYAN}systemctl --user enable --now sunrise${RESET}  (auto-start)"
+echo -e "    ${CYAN}systemctl --user start sunrise${RESET}       (once)"
+echo -e "    ${CYAN}journalctl --user -u sunrise -f${RESET}      (logs)"
+echo -e "  ${WHITE}CLI (sunrise-linux):${RESET}"
+echo -e "    ${CYAN}sunrise-linux server [addr] [port]${RESET}  (def 127.0.0.1:7777)"
+echo -e "      Env: SUNRISE_BIND_ADDRESS / SUNRISE_PORT"
+echo -e "      UDP: SUNRISE_UDP_BIND / SUNRISE_UDP_PORT (def 7778)"
+echo -e "    ${CYAN}sunrise-linux status${RESET} / ${CYAN}doctor${RESET}  check vault & port"
+echo -e "    ${CYAN}sunrise-linux test${RESET}                crypto/protocol self-test"
+echo -e "    ${CYAN}sunrise-linux sync-manifest${RESET}       opt-in Bungie (no account)"
+echo -e "    ${CYAN}sunrise-linux index [dir]${RESET}         cache package headers"
+echo -e "    ${CYAN}sunrise-linux uninstall${RESET}           restore vanilla DLLs"
+echo -e "  ${WHITE}Quick start:${RESET} ${CYAN}sunrise-linux server${RESET} then"
+echo -e "    ${CYAN}sunrise-game${RESET}  or  ${CYAN}steam steam://rungameid/1085660${RESET}"
+echo -e "    Proton/Wine: set launch opt"
+echo -e "      ${DIM}WINEDLLOVERRIDES=\"steam_api64=n,b\" %command%${RESET}"
 echo -e "${GREEN}=======================================================================${RESET}\n"
+echo -e "${DIM}Tip: run ${RESET}${CYAN}sunrise-linux --help${RESET}${DIM} for full options.${RESET}\n"
