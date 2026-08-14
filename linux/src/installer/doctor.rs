@@ -1,7 +1,8 @@
 // File: linux/src/installer/doctor.rs
-// Title: Sunrise Linux Doctor & Health Diagnostics
-// Plain English: Inspects system health, game archives, proxy hook status, and port availability.
+// Title: Sunrise Linux Doctor & Comprehensive Health Diagnostics
+// Plain English: Inspects system health, game archives, proxy hook status, PATH, and port availability.
 
+use std::env;
 use std::net::TcpStream;
 
 use crate::installer::config_setup::SunriseDirectories;
@@ -37,6 +38,7 @@ impl SunriseDoctor {
         println!("\x1b[38;5;240m───────────────────────────────────────────────────────────────────────\x1b[0m");
 
         let mut all_healthy = true;
+        let home = get_home_dir();
 
         // 1. Check Steam & Game Installation
         let installations = search_destiny2_installations();
@@ -71,7 +73,7 @@ impl SunriseDoctor {
             all_healthy = false;
         }
 
-        // 3. Check ~/.config/sunrise Sandbox
+        // 3. Check ~/.config/sunrise Sandbox & Package Cache
         let dirs = SunriseDirectories::default_paths();
         if dirs.config_dir.exists() && dirs.config_file.exists() {
             log_ok("SANDBOX CONFIG", &dirs.config_file.display().to_string());
@@ -80,8 +82,14 @@ impl SunriseDoctor {
             all_healthy = false;
         }
 
+        let cache_index = dirs.cache_dir.join("package_index.json");
+        if cache_index.exists() {
+            log_ok("PACKAGE INDEX", "Cached manifest headers verified");
+        } else {
+            log_info("PACKAGE INDEX", "Run 'sunrise-linux index' to cache package manifest");
+        }
+
         // 4. Check Start Menu Launchers & Icons
-        let home = get_home_dir();
         let icon_file = home.join(".local/share/icons/hicolor/scalable/apps/sunrise.svg");
         let menu_game = home.join(".local/share/applications/destiny2-sunrise.desktop");
         let menu_server = home.join(".local/share/applications/sunrise-server.desktop");
@@ -98,7 +106,16 @@ impl SunriseDoctor {
             log_scan("START MENU", "Launchers not installed (run 'sunrise-linux install')");
         }
 
-        // 5. Check Port Availability
+        // 5. Check PATH environment
+        let local_bin = home.join(".local/bin");
+        let path_env = env::var("PATH").unwrap_or_default();
+        if path_env.contains(&local_bin.to_string_lossy().to_string()) {
+            log_ok("USER PATH", "~/.local/bin is in $PATH");
+        } else {
+            log_scan("USER PATH", "~/.local/bin not in $PATH (add to ~/.bashrc)");
+        }
+
+        // 6. Check Port Availability
         match TcpStream::connect("127.0.0.1:7777") {
             Ok(_) => {
                 log_ok("PORT 7777", "Active / Listening");

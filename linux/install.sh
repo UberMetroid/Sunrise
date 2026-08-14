@@ -44,7 +44,16 @@ echo -e "${RESET}"
 echo -e "${CYAN}[STEP 0/5]${RESET} ${WHITE}ENVIRONMENT & FOUNDRY PRE-FLIGHT${RESET}"
 echo -e "${DIM}───────────────────────────────────────────────────────────────────────${RESET}"
 
-# 1. Check for Rust toolchain
+# 1. Check for prerequisite core tools (git, curl, cargo)
+for tool in git curl; do
+    if ! command -v "$tool" &>/dev/null; then
+        echo -e "  ${RED}[ FAIL ]${RESET} ${WHITE}Required utility '$tool' was not found.${RESET}"
+        ghost_box "\"We need '$tool' to pull telemetry and game blueprints. Please install it with your package manager.\""
+        exit 1
+    fi
+done
+echo -e "  ${GREEN}[  OK  ]${RESET} ${WHITE}System Utilities:${RESET} git, curl verified"
+
 if ! command -v cargo &>/dev/null; then
     echo -e "  ${RED}[ FAIL ]${RESET} ${WHITE}Rust toolchain ('cargo') was not found.${RESET}"
     ghost_box "\"Guardian down! The Rust weapon foundry ('cargo') is missing. Please install Rust via 'curl https://sh.rustup.rs -sSf | sh' to continue.\""
@@ -82,11 +91,19 @@ cd "$BUILD_DIR"
 cargo build --release --quiet
 echo -e "  ${GREEN}[  OK  ]${RESET} ${WHITE}Sunrise Linux Foundry Build Complete${RESET}"
 
-# 4. Link executable to ~/.local/bin
+# 4. Link executable to ~/.local/bin and configure PATH
 LOCAL_BIN="$HOME/.local/bin"
 mkdir -p "$LOCAL_BIN"
 ln -sf "$BUILD_DIR/target/release/sunrise-linux" "$LOCAL_BIN/sunrise-linux"
-echo -e "  ${GREEN}[  OK  ]${RESET} ${WHITE}Global Executable Linked:${RESET} $LOCAL_BIN/sunrise-linux\n"
+echo -e "  ${GREEN}[  OK  ]${RESET} ${WHITE}Global Executable Linked:${RESET} $LOCAL_BIN/sunrise-linux"
+
+if [[ ":$PATH:" != *":$LOCAL_BIN:"* ]]; then
+    if [ -f "$HOME/.bashrc" ] && ! grep -q 'export PATH="$HOME/.local/bin:$PATH"' "$HOME/.bashrc"; then
+        echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$HOME/.bashrc"
+        echo -e "  ${GREEN}[  OK  ]${RESET} ${WHITE}Added ~/.local/bin to ~/.bashrc PATH${RESET}"
+    fi
+    export PATH="$LOCAL_BIN:$PATH"
+fi
 
 # 5. Run automated step-by-step installation with Ghost companion
 "$BUILD_DIR/target/release/sunrise-linux" install
@@ -96,5 +113,6 @@ echo -e "${GREEN}  TRANSMAT STATUS: READY TO LAUNCH                             
 echo -e "${GREEN}=======================================================================${RESET}"
 echo -e "  Launch Terminal Server:   ${CYAN}sunrise-linux server${RESET}"
 echo -e "  Launch Background Daemon: ${CYAN}systemctl --user start sunrise${RESET}"
+echo -e "  Launch Destiny 2 Wrapper: ${CYAN}sunrise-game${RESET}"
 echo -e "  Inspect Live Logs:        ${CYAN}journalctl --user -u sunrise -f${RESET}"
 echo -e "${GREEN}=======================================================================${RESET}\n"

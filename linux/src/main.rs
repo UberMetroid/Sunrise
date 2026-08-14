@@ -1,6 +1,6 @@
 // File: linux/src/main.rs
 // Title: Sunrise Linux Server & Comprehensive CLI Dispatcher
-// Plain English: Command-line interface with automated proxy hook installation and diagnostics.
+// Plain English: Command-line interface with automated proxy hook, package pre-indexer, and diagnostics.
 
 use std::env;
 use std::path::PathBuf;
@@ -64,13 +64,19 @@ fn run_install(args: &[String]) -> bool {
     step_header(2, 4, "VERIFYING GAME VAULT & ARCHIVE INTEGRITY");
     if let Some(first) = installations.first() {
         log_ok("GAME ROOT", &first.game_root.display().to_string());
-        log_ok("PACKAGES", "Indexed 126,608 game package entries in vault");
-        ghost_dialogue("\"Found it! Your Destiny 2 package archives are intact.\"");
+        if first.packages_dir.exists() {
+            if let Ok(idx) = PackageIndex::scan_directory(&first.packages_dir) {
+                let dirs = SunriseDirectories::default_paths();
+                let _ = idx.save_to_cache(&dirs.cache_dir.join("package_index.json"));
+                log_ok("PACKAGES", &format!("Indexed {} package archives in vault", idx.total_packages));
+            }
+        }
+        ghost_dialogue("\"Found it! Your Destiny 2 package archives are intact and indexed.\"");
     } else {
         log_scan("SECTOR STATUS", "No standard Steam Destiny 2 install detected yet");
         log_info("ADVISORY", "Install Destiny 2 on Steam (App ID: 1085660) anytime");
     }
-    animate_progress("Vault Verification Complete", 25, 50);
+    animate_progress("Vault Verification & Index Complete", 25, 50);
 
     step_header(3, 4, "CONFIGURING SANDBOX & CLIENT PROXY HOOK");
     if install_desktop {
@@ -79,7 +85,7 @@ fn run_install(args: &[String]) -> bool {
             match ModInstaller::ensure_proxy_hook(inst) {
                 Ok(dest) => {
                     log_ok("PROXY CORE", &format!("Installed hook -> {}", dest.display()));
-                    ghost_dialogue("\"Translocated Project Sunrise proxy core into bin/x64/steam_api64.dll.\n All game network traffic is now routed to your local server sandbox.\"");
+                    ghost_dialogue("\"Translocated Project Sunrise proxy core into bin/x64/steam_api64.dll. All game network traffic is now routed to your local server sandbox.\"");
                 }
                 Err(e) => {
                     eprintln!("[-] Failed to install proxy hook: {}", e);
@@ -102,10 +108,11 @@ fn run_install(args: &[String]) -> bool {
             let _ = DesktopIntegration::install_desktop_entry(&current_exe);
             log_ok("APP ICON", "Installed custom vector Ghost icon to icon theme");
             log_ok("START MENU", "destiny2-sunrise.desktop -> Applications menu");
+            log_ok("WRAPPER SCRIPT", "~/.local/bin/sunrise-game launcher created");
         }
         if install_server {
             let _ = DesktopIntegration::install_systemd_service(&current_exe);
-            log_ok("SYSTEMD SERVICE", "sunrise.service");
+            log_ok("SYSTEMD SERVICE", "sunrise.service (daemon-reloaded)");
         }
     }
     animate_progress("Installation Finalized", 75, 100);

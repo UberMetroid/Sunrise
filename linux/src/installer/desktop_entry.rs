@@ -1,9 +1,11 @@
 // File: linux/src/installer/desktop_entry.rs
-// Title: Application Launcher, Icon & systemd Service Generator
-// Plain English: Registers Destiny 2 (Sunrise) and Sunrise Server entries exclusively in the system start menu.
+// Title: Application Launcher, Icon, Helper Script & systemd Service Generator
+// Plain English: Registers Start Menu entries, systemd daemon service, and auto-start launcher wrapper.
 
 use std::fs;
+use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
+use std::process::Command;
 
 use crate::error::{Result, SunriseError};
 use crate::installer::steam_locator::get_home_dir;
@@ -33,6 +35,38 @@ impl DesktopIntegration {
         Ok(())
     }
 
+    pub fn install_game_launcher_wrapper() -> Result<()> {
+        let home = get_home_dir();
+        let bin_dir = home.join(".local").join("bin");
+        fs::create_dir_all(&bin_dir)
+            .map_err(|e| SunriseError::IoError(format!("Failed to create ~/.local/bin: {}", e)))?;
+
+        let wrapper_path = bin_dir.join("sunrise-game");
+        let script = r#"#!/usr/bin/env bash
+# Project Sunrise Destiny 2 Launcher Wrapper
+# Verifies server status before launching Steam
+
+if ! nc -z 127.0.0.1 7777 2>/dev/null && ! ss -tulpn | grep -q ":7777"; then
+    echo "[*] Sunrise BAP server is not running. Starting background server..."
+    if command -v systemctl &>/dev/null && systemctl --user is-enabled sunrise.service &>/dev/null; then
+        systemctl --user start sunrise.service
+    else
+        nohup "$HOME/.local/bin/sunrise-linux" server >/dev/null 2>&1 &
+    fi
+    sleep 1
+fi
+
+echo "[+] Launching Destiny 2 via Steam (App ID: 1085660)..."
+exec steam steam://rungameid/1085660
+"#;
+
+        fs::write(&wrapper_path, script)
+            .map_err(|e| SunriseError::IoError(format!("Failed to write sunrise-game wrapper: {}", e)))?;
+        let _ = fs::set_permissions(&wrapper_path, fs::Permissions::from_mode(0o755));
+
+        Ok(())
+    }
+
     pub fn install_desktop_entry(binary_path: impl AsRef<Path>) -> Result<()> {
         let home = get_home_dir();
         let apps_dir = home.join(".local").join("share").join("applications");
@@ -44,8 +78,9 @@ impl DesktopIntegration {
             let _ = fs::remove_file(desktop_dir.join("destiny2-sunrise.desktop"));
         }
 
-        // Install the vector icon first
+        // Install the vector icon and helper wrapper
         let _ = Self::install_app_icon();
+        let _ = Self::install_game_launcher_wrapper();
 
         fs::create_dir_all(&apps_dir)
             .map_err(|e| SunriseError::IoError(format!("Failed to create applications dir: {}", e)))?;
@@ -68,14 +103,14 @@ impl DesktopIntegration {
             "[Desktop Entry]\n\
              Name=Destiny 2 (Project Sunrise)\n\
              Comment=Launch Destiny 2 via Steam with Project Sunrise Sandbox\n\
-             Exec=steam steam://rungameid/1085660\n\
+             Exec={}/.local/bin/sunrise-game\n\
              Icon=sunrise\n\
              Terminal=false\n\
              Type=Application\n\
-             Categories=Game;\n"
+             Categories=Game;\n",
+            home.display()
         );
 
-        // Write directly to Start Menu (~/.local/share/applications/)
         let server_menu = apps_dir.join("sunrise-server.desktop");
         let game_menu = apps_dir.join("destiny2-sunrise.desktop");
         fs::write(&server_menu, &server_content)
@@ -108,6 +143,12 @@ impl DesktopIntegration {
 
         fs::write(service_file, content)
             .map_err(|e| SunriseError::IoError(format!("Failed to write systemd service: {}", e)))?;
+
+        // Reload systemd user daemon
+        let _ = Command::new("systemctl")
+            .arg("--user")
+            .arg("daemon-reload")
+            .status();
 
         Ok(())
     }
