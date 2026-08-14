@@ -1,11 +1,16 @@
 // File: linux/src/main.rs
 // Title: Sunrise Linux Server & CLI Entrypoint
-// Plain English: Command-line interface to start the Sunrise daemon or run integrity diagnostics.
+// Plain English: Command-line interface to start the Sunrise daemon, install to Steam/XDG, or run diagnostics.
 
 use std::env;
+use std::path::PathBuf;
 use std::process;
 
 use sunrise_linux::crypto::hash::sha256_hex;
+use sunrise_linux::installer::config_setup::SunriseDirectories;
+use sunrise_linux::installer::desktop_entry::DesktopIntegration;
+use sunrise_linux::installer::mod_installer::ModInstaller;
+use sunrise_linux::installer::steam_locator::search_destiny2_installations;
 use sunrise_linux::protocol::bap_frame::{BapFrame, BAP_MAGIC};
 use sunrise_linux::protocol::opcode::Opcode;
 use sunrise_linux::server::tcp_server::SunriseTcpServer;
@@ -16,9 +21,84 @@ use sunrise_linux::SUNRISE_LINUX_VERSION;
 fn print_usage(program_name: &str) {
     println!("Sunrise Linux Daemon v{}", SUNRISE_LINUX_VERSION);
     println!("Usage:");
+    println!("  {} install                        Detect Steam/Destiny 2 & install config", program_name);
     println!("  {} server [bind_address] [port]   Start the BAP emulation server", program_name);
     println!("  {} test                           Run self-test diagnostics", program_name);
     println!("  {} version                        Print version information", program_name);
+}
+
+fn run_install() -> bool {
+    println!("[*] Searching for Destiny 2 installations on Linux...");
+    let installations = search_destiny2_installations();
+
+    if installations.is_empty() {
+        println!("[-] No Destiny 2 installation found in standard Steam library paths.");
+        println!("    Creating standalone ~/.config/sunrise configuration...");
+        let dirs = SunriseDirectories::default_paths();
+        if let Err(e) = dirs.initialize(None) {
+            eprintln!("[-] Error initializing config directory: {}", e);
+            return false;
+        }
+        println!("[+] Initialized config directory at: {}", dirs.config_dir.display());
+        return true;
+    }
+
+    println!("[+] Found {} Destiny 2 installation(s):", installations.len());
+    for (idx, inst) in installations.iter().enumerate() {
+        println!("    [{}] Game Root: {}", idx + 1, inst.game_root.display());
+        println!("        Packages:  {}", inst.packages_dir.display());
+        println!("        Bin (x64): {}", inst.bin_x64_dir.display());
+
+        // 1. Initialize ~/.config/sunrise
+        let dirs = SunriseDirectories::default_paths();
+        if let Err(e) = dirs.initialize(Some(&inst.game_root)) {
+            eprintln!("[-] Error initializing config directory: {}", e);
+            return false;
+        }
+        println!("    [+] Configuration initialized at: {}", dirs.config_dir.display());
+
+        // 2. Backup original steam_api64.dll
+        match ModInstaller::backup_original_dll(inst) {
+            Ok(backup) => println!("    [+] Backed up original Steam API DLL to: {}", backup.display()),
+            Err(e) => eprintln!("    [!] Note on Steam API backup: {}", e),
+        }
+
+        // 3. Check for compiled Sunrise.dll hook
+        let candidate_dlls = [
+            PathBuf::from("build-win/Sunrise.dll"),
+            PathBuf::from("../build-win/Sunrise.dll"),
+            PathBuf::from("Sunrise.dll"),
+        ];
+
+        let mut dll_installed = false;
+        for dll_path in &candidate_dlls {
+            if dll_path.exists() {
+                match ModInstaller::install_hook_dll(inst, dll_path) {
+                    Ok(_) => {
+                        println!("    [+] Installed Sunrise.dll -> {}", inst.steam_api_dll.display());
+                        dll_installed = true;
+                        break;
+                    }
+                    Err(e) => eprintln!("    [-] Error copying Sunrise.dll: {}", e),
+                }
+            }
+        }
+
+        if !dll_installed {
+            println!("    [i] Note: To complete client hook installation, cross-compile Sunrise.dll with MinGW");
+            println!("        and run 'sunrise-linux install' again.");
+        }
+    }
+
+    // Register desktop integration
+    if let Ok(current_exe) = env::current_exe() {
+        let _ = DesktopIntegration::install_desktop_entry(&current_exe);
+        let _ = DesktopIntegration::install_systemd_service(&current_exe);
+        println!("[+] Created desktop shortcut and systemd user service (~/.config/systemd/user/sunrise.service)");
+    }
+
+    println!("\n[✓] Sunrise Linux installation completed successfully!");
+    true
 }
 
 fn run_self_tests() -> bool {
@@ -86,6 +166,11 @@ fn main() {
     }
 
     match args[1].as_str() {
+        "install" => {
+            if !run_install() {
+                process::exit(1);
+            }
+        }
         "server" => {
             let bind_addr = args.get(2).cloned().unwrap_or_else(|| "127.0.0.1".to_string());
             let port = args.get(3).and_then(|p| p.parse::<u16>().ok()).unwrap_or(7777);

@@ -16,6 +16,7 @@ pub mod protocol;
 pub mod state;
 pub mod settings;
 pub mod server;
+pub mod installer;
 
 pub use error::{Result, SunriseError};
 pub use encoding::*;
@@ -24,5 +25,6 @@ pub use protocol::*;
 pub use state::*;
 pub use settings::*;
 pub use server::*;
+pub use installer::*;
 
-pub const SUNRISE_LINUX_VERSION: &str = "0.2.1";
+pub const SUNRISE_LINUX_VERSION: &str = "0.2.2";
