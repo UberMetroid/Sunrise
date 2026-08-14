@@ -49,13 +49,10 @@ public:
      * @return True when key, length, and payload fit.
      */
     [[nodiscard]] bool bytes(unsigned field, std::span<const std::byte> value) noexcept {
-        const std::uint64_t key = (static_cast<std::uint64_t>(field) << kWireTypeBits) | kWireBytes;
-        const std::size_t needed = varint_size(key) + varint_size(value.size()) + value.size();
-        if (needed > output_.size() - size_) {
+        if (!raw_varint((static_cast<std::uint64_t>(field) << kWireTypeBits) | kWireBytes)
+            || !raw_varint(value.size()) || value.size() > output_.size() - size_) {
             return false;
         }
-        (void)raw_varint(key);
-        (void)raw_varint(value.size());
         for (const std::byte byte : value) {
             output_[size_++] = byte;
         }
@@ -68,15 +65,6 @@ public:
     }
 
 private:
-    /** @return Number of varint bytes needed to encode value. */
-    [[nodiscard]] static constexpr std::size_t varint_size(std::uint64_t value) noexcept {
-        std::size_t count = 0;
-        do {
-            ++count;
-            value >>= kVarintPayloadBits;
-        } while (value != 0);
-        return count;
-    }
     /**
      * Appends one unsigned protobuf varint.
      * @param value Value encoded in 7-bit groups.

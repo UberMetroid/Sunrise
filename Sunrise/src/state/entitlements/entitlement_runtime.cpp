@@ -1,13 +1,9 @@
 #include "entitlement_runtime.h"
 
-#include <Windows.h>
-
 #include "validation.h"
 
 namespace sunrise::state::entitlements {
 namespace {
-
-SRWLOCK g_lock{SRWLOCK_INIT};
 
 /** @return Process-wide policy storage, seeded with the bundled policy on first use. */
 [[nodiscard]] Table& storage() noexcept {
@@ -22,9 +18,7 @@ bool publish(const Table& table) noexcept {
     if (!valid(table)) {
         return false;
     }
-    AcquireSRWLockExclusive(&g_lock);
     storage() = table;
-    ReleaseSRWLockExclusive(&g_lock);
     return true;
 }
 
@@ -35,9 +29,7 @@ const Table& get() noexcept {
 
 /** Restores the bundled ownership policy. */
 void clear() noexcept {
-    AcquireSRWLockExclusive(&g_lock);
     storage() = authored();
-    ReleaseSRWLockExclusive(&g_lock);
 }
 
 } // namespace sunrise::state::entitlements
