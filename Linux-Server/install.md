@@ -18,9 +18,14 @@ If you already have this repository cloned locally:
 ./Linux-Server/install.sh
 ```
 
-Or from inside the `linux` folder:
+Or from inside the `Linux-Server` folder:
 ```bash
-cd linux && ./install.sh
+cd Linux-Server && ./install.sh
+```
+
+Non-interactive (for `curl | bash`):
+```bash
+curl -fsSL https://raw.githubusercontent.com/UberMetroid/Sunrise/master/Linux-Server/install.sh | bash -s -- --yes
 ```
 
 ---
@@ -39,12 +44,13 @@ This instructs Proton to load Sunrise's proxy `steam_api64.dll` rather than the 
 
 ## What the Installer Does Automatically
 
-1. **Rust Toolchain Verification:** Checks for `cargo` and `rustc`.
-2. **Destiny 2 & Steam Scanning:** Detects game packages and binary directories in Steam libraries.
-3. **Configuration Setup:** Initializes `~/.config/sunrise/` adhering to the XDG Base Directory specification.
-4. **Safety Backup:** Backs up your original `steam_api64.dll` to `steam_api64_original.dll`.
-5. **Path Linking:** Creates a symlink at `~/.local/bin/sunrise-linux` so the binary is available globally.
-6. **Desktop & systemd Services:** Installs a desktop shortcut at `~/Desktop/sunrise-server.desktop` and a user service for background execution.
+1. **Rust Toolchain Verification:** Checks for `cargo` and `rustc` + verifies `git`/`curl`.
+2. **Destiny 2 & Steam Scanning:** Detects game packages and binary directories in Steam libraries (native, Flatpak `~/.var/app/com.valvesoftware.Steam/`, Snap `~/snap/steam/`, custom `libraryfolders.vdf`).
+3. **Configuration Setup:** Initializes `~/.config/sunrise/` (XDG) and `~/Downloads/Destiny 2/Sunrise-manifest/` for cached manifest (local-only, git-ignored).
+4. **Safety Backup:** Backs up your original `steam_api64.dll` to `steam_api64_original.dll` (validates non-empty).
+5. **Path Linking:** Creates symlink at `~/.local/bin/sunrise-linux`, auto-adds to `~/.bashrc`/`~/.zshrc`/`fish` as needed.
+6. **Build Verification:** Runs `cargo build --release` with log to `/tmp/sunrise-build.log` and checks disk space.
+7. **Desktop & systemd Services:** Installed via `sunrise-linux install` (user service `systemctl --user`).
 
 ---
 
@@ -103,11 +109,11 @@ sunrise-linux uninstall
 
 ## Configuration Reference
 
-Settings are stored at `~/.config/sunrise/config.json`:
+Settings are stored at `~/.config/sunrise/config.json` and manifest at `~/.config/sunrise/manifest_cache.json` (or `~/Downloads/Destiny 2/Sunrise-manifest/bootstrap_manifest.json`):
 
 ```json
 {
-  "version": "0.3.0",
+  "version": "0.6.4",
   "server": {
     "bind_address": "127.0.0.1",
     "port": 7777,

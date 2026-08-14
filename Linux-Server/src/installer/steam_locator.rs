@@ -37,7 +37,13 @@ impl Destiny2Paths {
 }
 
 pub fn get_home_dir() -> PathBuf {
-    env::var("HOME").map(PathBuf::from).unwrap_or_else(|_| PathBuf::from("."))
+    match env::var("HOME") {
+        Ok(h) if !h.is_empty() && Path::new(&h).is_absolute() => PathBuf::from(h),
+        _ => {
+            eprintln!("[!] HOME not set or not absolute, refusing to probe '.'");
+            PathBuf::from("/tmp")
+        }
+    }
 }
 
 pub fn search_destiny2_installations() -> Vec<Destiny2Paths> {
@@ -49,6 +55,9 @@ pub fn search_destiny2_installations() -> Vec<Destiny2Paths> {
         home.join(".steam/steam"),
         home.join(".steam/root"),
         home.join(".var/app/com.valvesoftware.Steam/.local/share/Steam"),
+        home.join(".var/app/com.valvesoftware.Steam/data/Steam"),
+        home.join("snap/steam/common/.steam"),
+        home.join(".steam/debian-installation"),
     ];
 
     for steam_root in &candidate_steam_roots {
@@ -93,13 +102,33 @@ pub fn parse_libraryfolders_vdf(vdf_path: &Path) -> Vec<PathBuf> {
     if let Ok(content) = fs::read_to_string(vdf_path) {
         for line in content.lines() {
             let trimmed = line.trim();
-            if trimmed.starts_with("\"path\"") {
-                let parts: Vec<&str> = trimmed.split('"').filter(|s| !s.trim().is_empty()).collect();
-                if parts.len() >= 2 {
-                    let path_str = parts[1];
-                    let pb = PathBuf::from(path_str);
-                    if pb.exists() && !paths.contains(&pb) {
-                        paths.push(pb);
+            // Match "path" " /some/dir " in both old and new VDF formats
+            if trimmed.contains("\"path\"") {
+                if let Some(start) = trimmed.find("\"path\"") {
+                    let rest = &trimmed[start + 6..];
+                    // Find first quoted string after "path"
+                    let mut in_quote = false;
+                    let mut current = String::new();
+                    let mut found: Option<String> = None;
+                    for ch in rest.chars() {
+                        if ch == '"' {
+                            if in_quote {
+                                if !current.trim().is_empty() {
+                                    found = Some(current.clone());
+                                }
+                                break;
+                            }
+                            in_quote = true;
+                            current.clear();
+                        } else if in_quote {
+                            current.push(ch);
+                        }
+                    }
+                    if let Some(path_str) = found {
+                        let pb = PathBuf::from(path_str.trim());
+                        if pb.exists() && !paths.contains(&pb) {
+                            paths.push(pb);
+                        }
                     }
                 }
             }

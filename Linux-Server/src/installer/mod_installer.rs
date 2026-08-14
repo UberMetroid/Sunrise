@@ -86,6 +86,18 @@ impl ModInstaller {
         let download_url = env::var("SUNRISE_HOOK_URL")
             .unwrap_or_else(|_| DEFAULT_HOOK_URL.to_string());
 
+        // Allow-list to prevent evil SUNRISE_HOOK_URL injection
+        let allowed_prefixes = [
+            "https://github.com/stanuwu/Sunrise/releases/",
+            "https://github.com/UberMetroid/Sunrise/releases/",
+        ];
+        if !allowed_prefixes.iter().any(|p| download_url.starts_with(p)) {
+            return Err(SunriseError::IoError(format!(
+                "SUNRISE_HOOK_URL not allow-listed: {}",
+                download_url
+            )));
+        }
+
         if let Some(parent) = cache_dll.parent() {
             let _ = fs::create_dir_all(parent);
         }
@@ -105,7 +117,16 @@ impl ModInstaller {
             )));
         }
 
+        // Basic integrity: non-empty, and if hook is known size, warn if too small
         verify_downloaded_file(&cache_dll, None)?;
+        let meta = fs::metadata(&cache_dll).map_err(|e| SunriseError::IoError(e.to_string()))?;
+        if meta.len() < 10_000 {
+            return Err(SunriseError::IoError(format!(
+                "Downloaded hook DLL suspiciously small ({} bytes): {}",
+                meta.len(),
+                cache_dll.display()
+            )));
+        }
 
         Ok(cache_dll)
     }

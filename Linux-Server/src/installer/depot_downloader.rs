@@ -15,6 +15,18 @@ use crate::installer::steam_locator::get_home_dir;
 pub const DEPOT_DOWNLOADER_URL: &str =
     "https://github.com/SteamRE/DepotDownloader/releases/latest/download/DepotDownloader-linux-x64.zip";
 
+fn atty_check() -> bool {
+    // Check if stdin is a TTY without adding new crate
+    libc_isatty(0) != 0
+}
+
+extern "C" {
+    fn isatty(fd: i32) -> i32;
+}
+fn libc_isatty(fd: i32) -> i32 {
+    unsafe { isatty(fd) }
+}
+
 pub const APP_ID: u32 = 1085660;
 pub const DEPOT_CORE_ID: u32 = 1085661;
 pub const MANIFEST_CORE: &str = "7180122903232116872";
@@ -82,13 +94,27 @@ impl DepotDownloader {
             let _ = fs::remove_file(&zip_path);
             return Err(e);
         }
+        // Check zip not suspiciously small
+        let meta = fs::metadata(&zip_path).map_err(|e| SunriseError::IoError(e.to_string()))?;
+        if meta.len() < 10_000 {
+            let _ = fs::remove_file(&zip_path);
+            return Err(SunriseError::IoError(format!(
+                "DepotDownloader zip suspiciously small ({} bytes)",
+                meta.len()
+            )));
+        }
 
-        let _ = Command::new("unzip")
+        let unzip_status = Command::new("unzip")
             .arg("-o")
             .arg(&zip_path)
             .arg("-d")
             .arg(&bin_dir)
-            .status();
+            .status()
+            .map_err(|e| SunriseError::IoError(format!("unzip failed: {}", e)))?;
+        if !unzip_status.success() {
+            let _ = fs::remove_file(&zip_path);
+            return Err(SunriseError::IoError("unzip DepotDownloader failed".to_string()));
+        }
 
         let _ = fs::remove_file(&zip_path);
         if exe_path.exists() {
@@ -132,6 +158,14 @@ impl DepotDownloader {
         println!("  \x1b[1;33m1\x1b[0m. Core Engine Binaries (~1.5 GB - Fast Boot & Server Test)");
         println!("  \x1b[1;33m2\x1b[0m. Full Exploration Vault (~75 GB - Core + All Vaulted Packages)");
         println!("  \x1b[1;33m3\x1b[0m. Package Content Archives Only (~75 GB)\n");
+
+        // Non-interactive / piped mode: don't block on read_line
+        let is_tty = atty_check();
+        if !is_tty {
+            println!("[*] Non-interactive terminal detected — printing manual commands");
+            Self::print_manual_instructions(target_dir);
+            return Ok(());
+        }
 
         print!("  \x1b[1;33m[?]\x1b[0m \x1b[1mSelect scope [1/2/3] (default: 1)\x1b[0m: ");
         let _ = std::io::Write::flush(&mut std::io::stdout());

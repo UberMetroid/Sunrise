@@ -1,9 +1,18 @@
 #!/usr/bin/env bash
-# File: linux/install.sh
+# File: Linux-Server/install.sh
 # Title: Sunrise Linux One-Line Web & Local Installer Script
 # Plain English: Professional Linux installer guided step-by-step by your Ghost.
 
 set -e
+trap 'rm -rf "${CLONE_DIR:-/tmp/empty}" 2>/dev/null; exit 1' ERR
+
+# Parse --yes / -y for non-interactive (curl | bash)
+ASSUME_YES=0
+for arg in "$@"; do
+    case "$arg" in
+        -y|--yes) ASSUME_YES=1 ;;
+    esac
+done
 
 # ANSI Color Palette
 CYAN="\033[1;36m"
@@ -73,30 +82,54 @@ elif [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/Linux-Server/Cargo.toml" ]; then
 else
     SUNRISE_REPO="${SUNRISE_REPO:-https://github.com/UberMetroid/Sunrise.git}"
     SUNRISE_BRANCH="${SUNRISE_BRANCH:-master}"
+    # Allow-list to prevent evil repo injection via SUNRISE_REPO env
+    case "$SUNRISE_REPO" in
+        https://github.com/UberMetroid/Sunrise.git|https://github.com/stanuwu/Sunrise.git) ;;
+        *) echo -e "  ${RED}[ FAIL ]${RESET} SUNRISE_REPO not allow-listed: $SUNRISE_REPO"; exit 1 ;;
+    esac
     CLONE_DIR="$HOME/.cache/sunrise-build"
 
     ghost_box "\"Transmitting beacon coordinates to $SUNRISE_REPO... Pulling down the latest Vanguard emulation blueprints.\""
     echo -e "  ${YELLOW}[ SYNC ]${RESET} ${WHITE}Downloading repository:${RESET} $SUNRISE_REPO ($SUNRISE_BRANCH)"
     rm -rf "$CLONE_DIR"
     mkdir -p "$CLONE_DIR"
-    git clone --depth 1 --branch "$SUNRISE_BRANCH" "$SUNRISE_REPO" \
-        "$CLONE_DIR" --quiet
+    if ! git clone --depth 1 --branch "$SUNRISE_BRANCH" "$SUNRISE_REPO" \
+        "$CLONE_DIR" --quiet; then
+        echo -e "  ${RED}[ FAIL ]${RESET} git clone failed"
+        exit 1
+    fi
     if [ -d "$CLONE_DIR/Linux-Server" ]; then
         BUILD_DIR="$CLONE_DIR/Linux-Server"
-    elif [ -d "$CLONE_DIR/Linux" ]; then
-        BUILD_DIR="$CLONE_DIR/Linux"
     else
-        BUILD_DIR="$CLONE_DIR/linux"
+        echo -e "  ${RED}[ FAIL ]${RESET} Linux-Server not found in clone"
+        exit 1
     fi
     echo -e "  ${GREEN}[  OK  ]${RESET} ${WHITE}Source Synchronized:${RESET} $BUILD_DIR"
 fi
 
-# 3. Build release binary
+# 3. Build release binary (with error visibility + disk check)
 echo -e "\n${CYAN}[FOUNDRY]${RESET} ${WHITE}COMPILING NATIVE LINUX RELEASE BINARY...${RESET}"
 echo -e "${DIM}───────────────────────────────────────────────────────────────────────${RESET}"
 cd "$BUILD_DIR"
-cargo build --release --quiet
+# Require ~500MB free for release build
+if command -v df &>/dev/null; then
+    avail_kb=$(df -k "$BUILD_DIR" | awk 'NR==2 {print $4}')
+    if [ -n "$avail_kb" ] && [ "$avail_kb" -lt 500000 ]; then
+        echo -e "  ${YELLOW}[ WARN ]${RESET} Low disk space: ${avail_kb}KB free, 500MB recommended"
+    fi
+fi
+if ! cargo build --release 2>&1 | tee /tmp/sunrise-build.log; then
+    echo -e "  ${RED}[ FAIL ]${RESET} cargo build failed — see /tmp/sunrise-build.log"
+    ghost_box "\"Foundry failure. Check Rust logs and free disk space.\""
+    exit 1
+fi
 echo -e "  ${GREEN}[  OK  ]${RESET} ${WHITE}Sunrise Linux Foundry Build Complete${RESET}"
+
+# Verify binary exists
+if [ ! -x "$BUILD_DIR/target/release/sunrise-linux" ]; then
+    echo -e "  ${RED}[ FAIL ]${RESET} Binary not found after build"
+    exit 1
+fi
 
 # 4. Link executable to ~/.local/bin and configure PATH
 LOCAL_BIN="$HOME/.local/bin"
@@ -105,15 +138,32 @@ ln -sf "$BUILD_DIR/target/release/sunrise-linux" "$LOCAL_BIN/sunrise-linux"
 echo -e "  ${GREEN}[  OK  ]${RESET} ${WHITE}Global Executable Linked:${RESET} $LOCAL_BIN/sunrise-linux"
 
 if [[ ":$PATH:" != *":$LOCAL_BIN:"* ]]; then
-    if [ -f "$HOME/.bashrc" ] && ! grep -q 'export PATH="$HOME/.local/bin:$PATH"' "$HOME/.bashrc"; then
-        echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$HOME/.bashrc"
-        echo -e "  ${GREEN}[  OK  ]${RESET} ${WHITE}Added ~/.local/bin to ~/.bashrc PATH${RESET}"
+    # Detect shell rc
+    SHELL_RC="$HOME/.bashrc"
+    if [ -n "${ZSH_VERSION:-}" ] || [ "$(basename "$SHELL")" = "zsh" ]; then
+        SHELL_RC="$HOME/.zshrc"
+    elif [ "$(basename "$SHELL")" = "fish" ]; then
+        SHELL_RC="$HOME/.config/fish/config.fish"
+        if [ -f "$SHELL_RC" ] && ! grep -q "$LOCAL_BIN" "$SHELL_RC"; then
+            echo "fish_add_path $LOCAL_BIN" >> "$SHELL_RC"
+            echo -e "  ${GREEN}[  OK  ]${RESET} ${WHITE}Added $LOCAL_BIN to $SHELL_RC${RESET}"
+        fi
+    fi
+    if [ -f "$SHELL_RC" ] && ! grep -q 'export PATH="$HOME/.local/bin:$PATH"' "$SHELL_RC"; then
+        if [ "$SHELL_RC" != "$HOME/.config/fish/config.fish" ]; then
+            echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$SHELL_RC"
+            echo -e "  ${GREEN}[  OK  ]${RESET} ${WHITE}Added ~/.local/bin to $SHELL_RC PATH${RESET}"
+        fi
     fi
     export PATH="$LOCAL_BIN:$PATH"
 fi
 
 # 5. Run automated step-by-step installation with Ghost companion
-"$BUILD_DIR/target/release/sunrise-linux" install
+if [ "$ASSUME_YES" = 1 ]; then
+    "$BUILD_DIR/target/release/sunrise-linux" install --yes
+else
+    "$BUILD_DIR/target/release/sunrise-linux" install
+fi
 
 echo -e "${GREEN}=======================================================================${RESET}"
 echo -e "${GREEN}  TRANSMAT STATUS: READY TO LAUNCH                                     ${RESET}"
