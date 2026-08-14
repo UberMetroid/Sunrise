@@ -98,6 +98,20 @@ cd Linux-Server && cargo test
 
 ---
 
+## Manifest (Optional, Anonymous)
+
+By default the server boots from your local vault (`~/Downloads/Destiny 2/packages/` + `~/Downloads/Destiny 2/Sunrise-manifest/`). No Bungie account is needed. To enrich the local item cache with the public Bungie manifest (anonymous, no `X-API-Key`, no account link):
+
+```bash
+sunrise-linux sync-manifest
+# or during install
+curl -fsSL https://raw.githubusercontent.com/UberMetroid/Sunrise/master/Linux-Server/install.sh | bash -s -- --with-manifest
+```
+
+This fetches `https://www.bungie.net/Platform/Destiny2/Manifest/` anonymously and caches to `~/.config/sunrise/manifest_cache.json` (git-ignored). Explore parity with `stanuwu` needs only the vault — manifest is enrichment only.
+
+---
+
 ## Uninstalling & Restoring Original Files
 
 To restore your original Steam API binaries and remove desktop shortcuts:

@@ -1,0 +1,20 @@
+name: CI
+on:
+  push:
+    paths:
+      - 'Linux-Server/**'
+  pull_request:
+    paths:
+      - 'Linux-Server/**'
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+      - run: cargo test --manifest-path Linux-Server/Cargo.toml
+      - run: cargo clippy --manifest-path Linux-Server/Cargo.toml -- -D warnings
+      - run: cargo build --manifest-path Linux-Server/Cargo.toml --release
+      - run: bash -n Linux-Server/install.sh
