@@ -27,4 +27,4 @@ pub use settings::*;
 pub use server::*;
 pub use installer::*;
 
-pub const SUNRISE_LINUX_VERSION: &str = "0.2.3";
+pub const SUNRISE_LINUX_VERSION: &str = "0.2.4";
