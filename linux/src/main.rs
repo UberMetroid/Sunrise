@@ -48,7 +48,7 @@ fn run_install(args: &[String]) -> bool {
         prompt_confirm("Install Sunrise Linux Emulation Server & ~/.config sandbox?", true)
     };
     let install_desktop = if auto_yes { true } else {
-        prompt_confirm("Install Destiny 2 Desktop & Steam proxy hook integration?", true)
+        prompt_confirm("Install Destiny 2 Start Menu & Steam proxy hook integration?", true)
     };
 
     if !install_server && !install_desktop {
@@ -101,7 +101,7 @@ fn run_install(args: &[String]) -> bool {
         if install_desktop {
             let _ = DesktopIntegration::install_desktop_entry(&current_exe);
             log_ok("APP ICON", "Installed custom vector Ghost icon to icon theme");
-            log_ok("DESKTOP LAUNCHER", "~/Desktop/destiny2-sunrise.desktop");
+            log_ok("START MENU", "destiny2-sunrise.desktop -> Applications menu");
         }
         if install_server {
             let _ = DesktopIntegration::install_systemd_service(&current_exe);

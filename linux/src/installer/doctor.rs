@@ -80,11 +80,11 @@ impl SunriseDoctor {
             all_healthy = false;
         }
 
-        // 4. Check Desktop Shortcuts & Icons
+        // 4. Check Start Menu Launchers & Icons
         let home = get_home_dir();
         let icon_file = home.join(".local/share/icons/hicolor/scalable/apps/sunrise.svg");
-        let desktop_file = home.join("Desktop/destiny2-sunrise.desktop");
-        let menu_file = home.join(".local/share/applications/destiny2-sunrise.desktop");
+        let menu_game = home.join(".local/share/applications/destiny2-sunrise.desktop");
+        let menu_server = home.join(".local/share/applications/sunrise-server.desktop");
 
         if icon_file.exists() {
             log_ok("VECTOR ICON", &icon_file.display().to_string());
@@ -92,10 +92,10 @@ impl SunriseDoctor {
             log_scan("VECTOR ICON", "Missing icon file");
         }
 
-        if desktop_file.exists() || menu_file.exists() {
-            log_ok("DESKTOP LAUNCHER", "Registered in desktop environment");
+        if menu_game.exists() && menu_server.exists() {
+            log_ok("START MENU", "Registered Destiny 2 & Sunrise Server in applications menu");
         } else {
-            log_scan("DESKTOP LAUNCHER", "Not installed (run 'sunrise-linux install')");
+            log_scan("START MENU", "Launchers not installed (run 'sunrise-linux install')");
         }
 
         // 5. Check Port Availability
