@@ -16,11 +16,11 @@ RESET="\033[0m"
 
 ghost_box() {
     local text="$1"
-    echo -e "${YELLOW}╭─ Ghost ─────────────────────────────────────────────────────────────╮${RESET}"
-    echo -e "$text" | fold -s -w 64 | while IFS= read -r line; do
-        printf "${YELLOW}│${RESET}  ${WHITE}%-64s${RESET} ${YELLOW}│${RESET}\n" "$line"
+    echo -e "${YELLOW}╭─ Ghost ─────────────────────────────────────────────────────────────${RESET}"
+    echo -e "$text" | fold -s -w 68 | while IFS= read -r line; do
+        echo -e "  ${WHITE}${line}${RESET}"
     done
-    echo -e "${YELLOW}╰─────────────────────────────────────────────────────────────────────╯${RESET}"
+    echo -e "${YELLOW}╰─────────────────────────────────────────────────────────────────────${RESET}"
 }
 
 echo -e "${CYAN}"

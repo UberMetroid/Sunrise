@@ -1,6 +1,6 @@
 // File: linux/src/installer/ghost_narrative.rs
 // Title: Ghost Companion Narrative & In-Line Terminal Animation Engine
-// Plain English: Renders Ghost ASCII art, word-wrapped dialogue boxes, and in-line animations.
+// Plain English: Renders Ghost ASCII art, clean border dialogue, and in-line animations.
 
 use std::io::{self, Write};
 use std::thread;
@@ -58,15 +58,12 @@ fn wrap_text(text: &str, max_width: usize) -> Vec<String> {
 }
 
 pub fn ghost_dialogue(speech: &str) {
-    println!("\x1b[1;33m╭─ Ghost ─────────────────────────────────────────────────────────────╮\x1b[0m");
-    let wrapped = wrap_text(speech, 64);
+    println!("\x1b[1;33m╭─ Ghost ─────────────────────────────────────────────────────────────\x1b[0m");
+    let wrapped = wrap_text(speech, 68);
     for line in wrapped {
-        println!(
-            "\x1b[1;33m│\x1b[0m  \x1b[1;37m{:<64}\x1b[0m \x1b[1;33m│\x1b[0m",
-            line
-        );
+        println!("  \x1b[1;37m{}\x1b[0m", line);
     }
-    println!("\x1b[1;33m╰─────────────────────────────────────────────────────────────────────╯\x1b[0m");
+    println!("\x1b[1;33m╰─────────────────────────────────────────────────────────────────────\x1b[0m");
 }
 
 pub fn step_header(step_idx: usize, total: usize, title: &str) {
