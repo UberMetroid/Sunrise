@@ -12,23 +12,23 @@ impl StarterLoadoutFactory {
         let mut character = CharacterState::new(char_id, class_type);
 
         // 1. Kinetic Weapons (hashes only - see Downloads vault)
-        let mut witherhoard = ItemInstance::new(101, 2357508056, 1, 1050, ItemBucketType::KineticWeapons);
-        witherhoard.is_equipped = true;
-        character.inventory.add_item(witherhoard);
+        let mut kinetic_exotic = ItemInstance::new(101, 2357508056, 1, 1050, ItemBucketType::KineticWeapons);
+        kinetic_exotic.is_equipped = true;
+        character.inventory.add_item(kinetic_exotic);
         character.inventory.add_item(ItemInstance::new(102, 3993415705, 1, 1050, ItemBucketType::KineticWeapons));
         character.inventory.add_item(ItemInstance::new(103, 347366834, 1, 1050, ItemBucketType::KineticWeapons));
 
         // 2. Energy Weapons (hashes only)
-        let mut recluse = ItemInstance::new(201, 2354271539, 1, 1050, ItemBucketType::EnergyWeapons);
-        recluse.is_equipped = true;
-        character.inventory.add_item(recluse);
+        let mut energy_exotic = ItemInstance::new(201, 2354271539, 1, 1050, ItemBucketType::EnergyWeapons);
+        energy_exotic.is_equipped = true;
+        character.inventory.add_item(energy_exotic);
         character.inventory.add_item(ItemInstance::new(202, 2222560548, 1, 1050, ItemBucketType::EnergyWeapons));
         character.inventory.add_item(ItemInstance::new(203, 814876684, 1, 1050, ItemBucketType::EnergyWeapons));
 
         // 3. Power Weapons (hashes only)
-        let mut sword = ItemInstance::new(301, 614426548, 1, 1050, ItemBucketType::PowerWeapons);
-        sword.is_equipped = true;
-        character.inventory.add_item(sword);
+        let mut power_exotic = ItemInstance::new(301, 614426548, 1, 1050, ItemBucketType::PowerWeapons);
+        power_exotic.is_equipped = true;
+        character.inventory.add_item(power_exotic);
         character.inventory.add_item(ItemInstance::new(302, 1891561814, 1, 1050, ItemBucketType::PowerWeapons));
         character.inventory.add_item(ItemInstance::new(303, 2220014607, 1, 1050, ItemBucketType::PowerWeapons));
 
