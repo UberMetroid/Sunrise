@@ -31,4 +31,4 @@ pub use server::*;
 pub use installer::*;
 pub use tui::*;
 
-pub const SUNRISE_LINUX_VERSION: &str = "0.6.4";
+pub const SUNRISE_LINUX_VERSION: &str = "0.6.5";

@@ -12,7 +12,7 @@ use std::process::Command;
 
 use crate::crypto::hash::sha256_hex;
 use crate::error::{Result, SunriseError};
-use crate::installer::steam_locator::search_destiny2_installations;
+use crate::installer::steam_locator::{get_home_dir, search_destiny2_installations};
 use crate::manifest::manifest_store::ManifestStore;
 use crate::state::package_scanner::PackageIndex;
 
@@ -58,8 +58,12 @@ impl ManifestDownloader {
             }
         }
         // Also try Downloads vault location (logical grouping with 242GB packages)
-        let dl_cache = Path::new("/home/jeryd/Downloads/Destiny 2/Sunrise-manifest/bootstrap_manifest.json");
-        if let Ok(store) = ManifestStore::load_from_disk(dl_cache) {
+        let dl_cache = get_home_dir()
+            .join("Downloads")
+            .join("Destiny 2")
+            .join("Sunrise-manifest")
+            .join("bootstrap_manifest.json");
+        if let Ok(store) = ManifestStore::load_from_disk(&dl_cache) {
             if !store.items.is_empty() {
                 return store;
             }

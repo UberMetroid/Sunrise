@@ -7,7 +7,7 @@ Welcome, **OpenCode**! Here is the complete architectural context, user preferen
 ## 📌 1. Project Overview & Current State
 
 * **Repository:** `https://github.com/UberMetroid/Sunrise` (Fork of `stanuwu/Sunrise`)
-* **Local Workspace:** `/home/jeryd/Projects/UberMetroid/Sunrise`
+* **Local Workspace:** `~/Projects/UberMetroid/Sunrise`
 * **Current Version:** `v0.6.3` (Git branch `master`, fully synchronized with GitHub)
 * **Active Status:**
   - **Emulation Server:** 100% operational in Rust (`Linux/`) and Docker container (`Docker/`).
@@ -17,7 +17,7 @@ Welcome, **OpenCode**! Here is the complete architectural context, user preferen
     - UDP transport (`UdpSocket`, port 7778 default, env `SUNRISE_UDP_PORT`) with `SUNU` magic + `BindUdp (0x0701)` handshake + `WorldState` snapshot echo per `PlayerPosition` packet.
   - **Next: Full D2 Mirror Roadmap** — entities, AI, combat, patrols, raids, vendors, quests, loot tables.
   - **Vault Download Complete:** The full **Season of Arrivals (v2.9.2.2 / Build 1085660)** package vault (~258 GB uncompressed across 4,443 `.pkg` archives) is 100% downloaded and indexed.
-  - **Full Vault Backup Created:** Safely mirrored to `/home/jeryd/Downloads/Destiny 2`.
+  - **Full Vault Backup Created:** Safely mirrored to `~/Downloads/Destiny 2`.
   - **Doctor Diagnostics:** `[✓] VANGUARD SYSTEM DIAGNOSTICS: ALL SYSTEMS OPERATIONAL`.
 
 ---
