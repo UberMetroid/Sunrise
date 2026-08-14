@@ -11,21 +11,21 @@ impl StarterLoadoutFactory {
     pub fn create_default_character(char_id: u64, class_type: CharacterClass) -> CharacterState {
         let mut character = CharacterState::new(char_id, class_type);
 
-        // 1. Kinetic Weapons (Witherhoard, Mountaintop, Ace of Spades)
+        // 1. Kinetic Weapons (hashes only - see Downloads vault)
         let mut witherhoard = ItemInstance::new(101, 2357508056, 1, 1050, ItemBucketType::KineticWeapons);
         witherhoard.is_equipped = true;
         character.inventory.add_item(witherhoard);
         character.inventory.add_item(ItemInstance::new(102, 3993415705, 1, 1050, ItemBucketType::KineticWeapons));
         character.inventory.add_item(ItemInstance::new(103, 347366834, 1, 1050, ItemBucketType::KineticWeapons));
 
-        // 2. Energy Weapons (Recluse, Ikelos SMG, Trinity Ghoul)
+        // 2. Energy Weapons (hashes only)
         let mut recluse = ItemInstance::new(201, 2354271539, 1, 1050, ItemBucketType::EnergyWeapons);
         recluse.is_equipped = true;
         character.inventory.add_item(recluse);
         character.inventory.add_item(ItemInstance::new(202, 2222560548, 1, 1050, ItemBucketType::EnergyWeapons));
         character.inventory.add_item(ItemInstance::new(203, 814876684, 1, 1050, ItemBucketType::EnergyWeapons));
 
-        // 3. Power Weapons (Falling Guillotine, Whisper of the Worm, Anarchy)
+        // 3. Power Weapons (hashes only)
         let mut sword = ItemInstance::new(301, 614426548, 1, 1050, ItemBucketType::PowerWeapons);
         sword.is_equipped = true;
         character.inventory.add_item(sword);
