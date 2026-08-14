@@ -34,36 +34,39 @@ fn print_usage(program_name: &str) {
 
 fn run_install() -> bool {
     print_prologue();
-    print_scan_start();
+    print_step1_scan();
     let installations = search_destiny2_installations();
 
     if installations.is_empty() {
-        print_no_game_found();
+        print_step2_no_game();
         let dirs = SunriseDirectories::default_paths();
         if let Err(e) = dirs.initialize(None) {
             eprintln!("[-] Error initializing config: {}", e);
             return false;
         }
-        print_epilogue(&dirs.config_dir.display().to_string());
+        print_step4_config(&dirs.config_dir.display().to_string());
+        print_step5_desktop("~/Desktop/sunrise-server.desktop", "sunrise.service");
+        print_epilogue();
         return true;
     }
 
     for inst in &installations {
-        print_game_found(&inst.game_root.display().to_string(), 126608);
+        print_step2_game_found(&inst.game_root.display().to_string(), 126608);
 
-        // 1. Initialize ~/.config/sunrise
+        // Backup original steam_api64.dll
+        if let Ok(backup) = ModInstaller::backup_original_dll(inst) {
+            print_step3_backup(&backup.display().to_string());
+        }
+
+        // Initialize ~/.config/sunrise
         let dirs = SunriseDirectories::default_paths();
         if let Err(e) = dirs.initialize(Some(&inst.game_root)) {
             eprintln!("[-] Error initializing config directory: {}", e);
             return false;
         }
+        print_step4_config(&dirs.config_dir.display().to_string());
 
-        // 2. Backup original steam_api64.dll
-        if let Ok(backup) = ModInstaller::backup_original_dll(inst) {
-            print_backup_made(&backup.display().to_string());
-        }
-
-        // 3. Check for compiled Sunrise.dll hook
+        // Check for compiled Sunrise.dll hook
         let candidate_dlls = [
             PathBuf::from("build-win/Sunrise.dll"),
             PathBuf::from("../build-win/Sunrise.dll"),
@@ -73,7 +76,7 @@ fn run_install() -> bool {
         for dll_path in &candidate_dlls {
             if dll_path.exists() {
                 if ModInstaller::install_hook_dll(inst, dll_path).is_ok() {
-                    story_event("HOOK INSTALLED", &format!("Sunrise.dll -> {}", inst.steam_api_dll.display()));
+                    log_ok("HOOK INSTALLED", &format!("Sunrise.dll -> {}", inst.steam_api_dll.display()));
                     break;
                 }
             }
@@ -84,11 +87,9 @@ fn run_install() -> bool {
     if let Ok(current_exe) = env::current_exe() {
         let _ = DesktopIntegration::install_desktop_entry(&current_exe);
         let _ = DesktopIntegration::install_systemd_service(&current_exe);
-        story_event("DESKTOP LINK", "Registered ~/.local/share/applications/sunrise-server.desktop");
     }
-
-    let dirs = SunriseDirectories::default_paths();
-    print_epilogue(&dirs.config_dir.display().to_string());
+    print_step5_desktop("~/Desktop/sunrise-server.desktop", "sunrise.service");
+    print_epilogue();
     true
 }
 
@@ -96,7 +97,7 @@ fn run_uninstall() -> bool {
     let results = Uninstaller::restore_all_game_files();
     for (path, restored) in results {
         if restored {
-            story_event("RESTORED", &format!("Original steam_api64.dll in {}", path));
+            log_ok("RESTORED", &format!("Original steam_api64.dll in {}", path));
         }
     }
     let _ = Uninstaller::remove_desktop_integration();
