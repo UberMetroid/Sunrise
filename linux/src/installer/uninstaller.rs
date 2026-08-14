@@ -59,6 +59,19 @@ impl Uninstaller {
             let _ = fs::remove_file(bin_link);
         }
 
+        // 5. Remove application icon
+        let icon_file = home
+            .join(".local")
+            .join("share")
+            .join("icons")
+            .join("hicolor")
+            .join("scalable")
+            .join("apps")
+            .join("sunrise.svg");
+        if icon_file.exists() {
+            let _ = fs::remove_file(icon_file);
+        }
+
         Ok(())
     }
 

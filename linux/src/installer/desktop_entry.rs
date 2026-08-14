@@ -1,6 +1,6 @@
 // File: linux/src/installer/desktop_entry.rs
-// Title: Desktop Shortcut & systemd Service Generator
-// Plain English: Registers desktop entry on ~/Desktop and user applications menu.
+// Title: Desktop Shortcut, Icon & systemd Service Generator
+// Plain English: Registers desktop entry on ~/Desktop, start menu, and installs custom app icon.
 
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
@@ -9,13 +9,38 @@ use std::path::Path;
 use crate::error::{Result, SunriseError};
 use crate::installer::steam_locator::get_home_dir;
 
+pub const SUNRISE_SVG_ICON: &str = include_str!("../../assets/sunrise-icon.svg");
+
 pub struct DesktopIntegration;
 
 impl DesktopIntegration {
+    pub fn install_app_icon() -> Result<()> {
+        let home = get_home_dir();
+        let icon_dir = home
+            .join(".local")
+            .join("share")
+            .join("icons")
+            .join("hicolor")
+            .join("scalable")
+            .join("apps");
+
+        fs::create_dir_all(&icon_dir)
+            .map_err(|e| SunriseError::IoError(format!("Failed to create icon directory: {}", e)))?;
+
+        let icon_path = icon_dir.join("sunrise.svg");
+        fs::write(&icon_path, SUNRISE_SVG_ICON)
+            .map_err(|e| SunriseError::IoError(format!("Failed to write app icon: {}", e)))?;
+
+        Ok(())
+    }
+
     pub fn install_desktop_entry(binary_path: impl AsRef<Path>) -> Result<()> {
         let home = get_home_dir();
         let apps_dir = home.join(".local").join("share").join("applications");
         let desktop_dir = home.join("Desktop");
+
+        // Install the icon first
+        let _ = Self::install_app_icon();
 
         fs::create_dir_all(&apps_dir)
             .map_err(|e| SunriseError::IoError(format!("Failed to create applications dir: {}", e)))?;
@@ -25,6 +50,7 @@ impl DesktopIntegration {
              Name=Sunrise Emulation Server\n\
              Comment=Local BAP Emulation Server for Project Sunrise\n\
              Exec={} server\n\
+             Icon=sunrise\n\
              Terminal=true\n\
              Type=Application\n\
              Categories=Game;Development;\n",
