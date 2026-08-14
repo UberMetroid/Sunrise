@@ -12,6 +12,8 @@ use crate::error::{Result, SunriseError};
 pub struct ServerConfig {
     pub bind_address: String,
     pub port: u16,
+    pub udp_bind_address: String,
+    pub udp_port: u16,
     pub enable_queuez: bool,
     pub max_connections: usize,
 }
@@ -21,6 +23,8 @@ impl Default for ServerConfig {
         Self {
             bind_address: "127.0.0.1".to_string(),
             port: 7777,
+            udp_bind_address: "127.0.0.1".to_string(),
+            udp_port: 7778,
             enable_queuez: true,
             max_connections: 64,
         }
@@ -38,7 +42,7 @@ pub struct SunriseSettings {
 impl Default for SunriseSettings {
     fn default() -> Self {
         Self {
-            version: "0.6.2".to_string(),
+            version: "0.6.3".to_string(),
             server: ServerConfig::default(),
             auto_unlock_entitlements: true,
             default_power_cap: 1000,

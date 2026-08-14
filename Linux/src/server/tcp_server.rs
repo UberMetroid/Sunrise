@@ -1,7 +1,7 @@
 // File: linux/src/server/tcp_server.rs
-// Title: TCP BAP Server with Multi-Client Registry & Fireteam Routing
-// RFC Reference: RFC 793 (Transmission Control Protocol)
-// Plain English: Listens on a TCP port, registers clients in a shared registry, drains per-connection outbound frames between reads.
+// Title: TCP BAP Server with Multi-Client Registry & UDP Game State Listener
+// RFC Reference: RFC 793 (Transmission Control Protocol), RFC 768 (UDP)
+// Plain English: Listens on TCP for BAP frames and on UDP for player state; shares one registry.
 
 use std::io::{Read, Write};
 use std::net::{SocketAddr, TcpListener, TcpStream};
@@ -15,6 +15,8 @@ use crate::protocol::bap_frame::BapFrame;
 use crate::server::client_registry::ClientRegistry;
 use crate::server::fireteam::Fireteam;
 use crate::server::session_handler::SessionHandler;
+use crate::server::udp_server::SunriseUdpServer;
+use crate::server::world_state::WorldState;
 use crate::settings::config::ServerConfig;
 
 pub struct SunriseTcpServer {
@@ -49,10 +51,37 @@ impl SunriseTcpServer {
 
         let registry = ClientRegistry::new();
         let fireteam = Arc::new(Fireteam::new(registry.clone()));
+        let world = Arc::new(WorldState::new());
         let next_ephemeral = Arc::new(AtomicU64::new(1000));
 
+        let udp_socket = std::net::UdpSocket::bind("0.0.0.0:0")
+            .map_err(|e| SunriseError::IoError(format!("UDP probe bind: {e}")))?;
+        let udp_port = udp_port_for(&self.config, &udp_socket);
+        drop(udp_socket);
+        let udp_bind: SocketAddr = format!("{}:{}", self.config.udp_bind_address, udp_port)
+            .parse()
+            .map_err(|e: std::net::AddrParseError| {
+                SunriseError::IoError(format!("UDP bind parse: {e}"))
+            })?;
+        let udp_server = SunriseUdpServer::new(
+            udp_bind,
+            registry.clone(),
+            world.clone(),
+            self.is_running.clone(),
+        );
+        let _udp_thread = thread::spawn(move || {
+            let _ = udp_server.run();
+        });
+
         self.is_running.store(true, Ordering::SeqCst);
-        println!("\x1b[1;32m[✓] BAP Emulation Server listening on {}\x1b[0m", bind_addr);
+        println!(
+            "\x1b[1;32m[✓] BAP Emulation Server listening on {}\x1b[0m",
+            bind_addr
+        );
+        println!(
+            "\x1b[1;32m[✓] UDP Game State Listener listening on {}\x1b[0m",
+            udp_bind
+        );
         println!("\x1b[1;33m[*] Waiting for Guardian connections from game client...\x1b[0m\n");
 
         while self.is_running.load(Ordering::SeqCst) {
@@ -61,6 +90,7 @@ impl SunriseTcpServer {
                     let running_flag = Arc::clone(&self.is_running);
                     let registry_clone = registry.clone();
                     let fireteam_clone = fireteam.clone();
+                    let world_clone = world.clone();
                     let next_ephemeral_clone = next_ephemeral.clone();
                     println!("\x1b[1;36m[+] Guardian connected from {}\x1b[0m", peer_addr);
                     thread::spawn(move || {
@@ -70,6 +100,7 @@ impl SunriseTcpServer {
                             running_flag,
                             registry_clone,
                             fireteam_clone,
+                            world_clone,
                             next_ephemeral_clone,
                         );
                     });
@@ -93,6 +124,7 @@ impl SunriseTcpServer {
         is_running: Arc<AtomicBool>,
         registry: Arc<ClientRegistry>,
         fireteam: Arc<Fireteam>,
+        world: Arc<WorldState>,
         next_ephemeral: Arc<AtomicU64>,
     ) -> Result<()> {
         stream.set_read_timeout(Some(Duration::from_secs(5)))?;
@@ -111,7 +143,6 @@ impl SunriseTcpServer {
         let mut buffer = vec![0u8; 65536];
 
         while is_running.load(Ordering::SeqCst) {
-            // 1) Drain any pushed frames (fanout from peers) before blocking on read.
             while let Some(pushed) = session.registry_handle.outbound.try_drain_next() {
                 let bytes = pushed.to_bytes()?;
                 if stream.write_all(&bytes).is_err() {
@@ -153,10 +184,18 @@ impl SunriseTcpServer {
             }
         }
 
+        world.remove_player(session.account.membership_id);
         registry.unregister(session.account.membership_id);
         fireteam.leave(session.active_destination_hash, session.account.membership_id);
 
         println!("\x1b[1;31m[-] Guardian disconnected ({})\x1b[0m", peer_addr);
         Ok(())
     }
+}
+
+fn udp_port_for(config: &ServerConfig, probe: &std::net::UdpSocket) -> u16 {
+    if config.udp_port != 0 {
+        return config.udp_port;
+    }
+    probe.local_addr().map(|a| a.port()).unwrap_or(0)
 }

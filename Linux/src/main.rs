@@ -30,6 +30,7 @@ fn print_usage(prog: &str) {
     println!("Commands:");
     println!("  install [--yes / -y]              Interactive installer (proxy hook + launcher bypass)");
     println!("  server [bind_address] [port]      Start the BAP emulation server (default: 127.0.0.1:7777)");
+    println!("                                   Env: SUNRISE_BIND_ADDRESS, SUNRISE_PORT, SUNRISE_UDP_BIND, SUNRISE_UDP_PORT (default udp: 7778)");
     println!("  depot | download [target_dir]     Download legacy Destiny 2 depot archives via Steam");
     println!("  status                            Check if local server daemon is actively listening");
     println!("  doctor | check                    Run comprehensive system & game vault diagnostics");
@@ -206,14 +207,18 @@ fn main() {
             let env_addr = env::var("SUNRISE_BIND_ADDRESS").or_else(|_| env::var("SUNRISE_BIND_ADDR"))
                 .unwrap_or_else(|_| "127.0.0.1".to_string());
             let env_port = env::var("SUNRISE_PORT").ok().and_then(|p| p.parse::<u16>().ok()).unwrap_or(7777);
+            let env_udp_bind = env::var("SUNRISE_UDP_BIND").unwrap_or_else(|_| "127.0.0.1".to_string());
+            let env_udp_port = env::var("SUNRISE_UDP_PORT").ok().and_then(|p| p.parse::<u16>().ok()).unwrap_or(7778);
             let bind_addr = args.get(2).cloned().unwrap_or(env_addr);
             let port = args.get(3).and_then(|p| p.parse::<u16>().ok()).unwrap_or(env_port);
 
             let mut config = ServerConfig::default();
             config.bind_address = bind_addr.clone();
             config.port = port;
+            config.udp_bind_address = env_udp_bind.clone();
+            config.udp_port = env_udp_port;
 
-            println!("Starting Sunrise Linux Server on {}:{}...", bind_addr, port);
+            println!("Starting Sunrise Linux Server on {}:{} (UDP {}:{})...", bind_addr, port, env_udp_bind, env_udp_port);
             let server = SunriseTcpServer::new(config);
             if let Err(e) = server.run() {
                 eprintln!("Server error: {}", e);
