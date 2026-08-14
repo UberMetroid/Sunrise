@@ -24,15 +24,19 @@ ghost_box() {
 
 echo -e "${CYAN}"
 cat << "EOF"
-            /\
-           /  \
-     /\   / /\ \   /\        PROJECT SUNRISE // LINUX FOUNDRY
-    /  \ / /  \ \ /  \       ================================
-   <    V | (o) | V   >      "Eyes up, Guardian. We found a signal."
-    \  / \ \  / / \  /
-     \/   \ \/ /   \/
-           \  /
-            \/
+                 /\
+                /  \
+           /\  / /\ \  /\           PROJECT SUNRISE // LINUX FOUNDRY
+          /  \/ /  \ \/  \          ================================
+         / /\  / /\ \  /\ \         "Eyes up, Guardian. We found a signal."
+        / /  \/ /  \ \/  \ \
+       < <    | ( O ) |   > >       Offline BAP Emulation & Sandbox
+        \ \  /\ \  / /\  / /
+         \ \/  \ \/ /  \/ /
+          \  /\ \  / /\  /
+           \/  \ \/ /  \/
+                \  /
+                 \/
 EOF
 echo -e "${RESET}"
 

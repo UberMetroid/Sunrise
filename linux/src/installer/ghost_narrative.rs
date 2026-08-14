@@ -1,17 +1,25 @@
 // File: linux/src/installer/ghost_narrative.rs
-// Title: Ghost Companion Narrative & Terminal Interface Engine
-// Plain English: Guides the Guardian step-by-step with Ghost dialogues, progress badges, and UI boxes.
+// Title: Ghost Companion Narrative & In-Line Terminal Animation Engine
+// Plain English: Renders detailed Ghost ASCII art, in-line progress animations, and interactive prompts.
+
+use std::io::{self, Write};
+use std::thread;
+use std::time::{Duration, Instant};
 
 pub const GHOST_ASCII_BANNER: &str = r#"
-            /\
-           /  \
-     /\   / /\ \   /\        PROJECT SUNRISE // LINUX FOUNDRY
-    /  \ / /  \ \ /  \       ================================
-   <    V | (o) | V   >      "Eyes up, Guardian. We found a signal."
-    \  / \ \  / / \  /
-     \/   \ \/ /   \/
-           \  /
-            \/
+                 /\
+                /  \
+           /\  / /\ \  /\           PROJECT SUNRISE // LINUX FOUNDRY
+          /  \/ /  \ \/  \          ================================
+         / /\  / /\ \  /\ \         "Eyes up, Guardian. We found a signal."
+        / /  \/ /  \ \/  \ \
+       < <    | ( O ) |   > >       Offline BAP Emulation & Sandbox
+        \ \  /\ \  / /\  / /
+         \ \/  \ \/ /  \/ /
+          \  /\ \  / /\  /
+           \/  \ \/ /  \/
+                \  /
+                 \/
 "#;
 
 pub fn print_banner() {
@@ -46,72 +54,59 @@ pub fn log_info(item: &str, detail: &str) {
     println!("  \x1b[1;36m[ INFO ]\x1b[0m \x1b[1m{:<20}\x1b[0m {}", item, detail);
 }
 
+pub fn animate_spinner(label: &str, duration_ms: u64) {
+    let spinner = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠇", "⠏"];
+    let start = Instant::now();
+    let mut idx = 0;
+    while start.elapsed().as_millis() < duration_ms as u128 {
+        print!("\r  \x1b[1;33m[{}]\x1b[0m \x1b[1m{}\x1b[0m", spinner[idx % spinner.len()], label);
+        let _ = io::stdout().flush();
+        thread::sleep(Duration::from_millis(60));
+        idx += 1;
+    }
+    print!("\r\x1b[K");
+    let _ = io::stdout().flush();
+}
+
+pub fn animate_progress(step_name: &str, from_pct: usize, to_pct: usize) {
+    for pct in from_pct..=to_pct {
+        let filled = pct / 5;
+        let empty = 20 - filled;
+        let bar: String = "█".repeat(filled) + &"░".repeat(empty);
+        print!(
+            "\r  \x1b[1;36m[PROGRESS]\x1b[0m \x1b[1;32m[{}]\x1b[0m {:>3}% - {}",
+            bar, pct, step_name
+        );
+        let _ = io::stdout().flush();
+        thread::sleep(Duration::from_millis(12));
+    }
+    println!();
+}
+
+pub fn prompt_confirm(question: &str, default_yes: bool) -> bool {
+    let suffix = if default_yes { "[Y/n]" } else { "[y/N]" };
+    print!("  \x1b[1;33m[?]\x1b[0m \x1b[1m{} \x1b[1;36m{}\x1b[0m: ", question, suffix);
+    let _ = io::stdout().flush();
+
+    let mut input = String::new();
+    if io::stdin().read_line(&mut input).is_ok() {
+        let trimmed = input.trim().to_lowercase();
+        if trimmed.is_empty() {
+            default_yes
+        } else {
+            trimmed == "y" || trimmed == "yes"
+        }
+    } else {
+        default_yes
+    }
+}
+
 pub fn print_prologue() {
     print_banner();
     ghost_dialogue(
         "\"The Red War took the main Bungie relay offline, but I've isolated\n \
          a stable local frequency. I will guide you through setting up our\n \
          offline BAP sandbox step-by-step. Stand by.\"",
-    );
-}
-
-pub fn print_step1_scan() {
-    step_header(1, 5, "SCANNING LOCAL STORAGE & STEAM LIBRARIES");
-    ghost_dialogue(
-        "\"Searching your Linux drive sectors for Steam installations and\n \
-         parsing libraryfolders.vdf for Destiny 2 package vaults...\"",
-    );
-}
-
-pub fn print_step2_game_found(root: &str, pkg_count: usize) {
-    step_header(2, 5, "VERIFYING GAME VAULT & ARCHIVE INTEGRITY");
-    log_ok("GAME ROOT", root);
-    log_ok("PACKAGES", &format!("Indexed {} game package entries in vault", pkg_count));
-    ghost_dialogue(
-        "\"Found it! Your Destiny 2 package archives are intact. We can build\n \
-         the emulation sandbox directly on top of these local assets.\"",
-    );
-}
-
-pub fn print_step2_no_game() {
-    step_header(2, 5, "VERIFYING GAME VAULT & ARCHIVE INTEGRITY");
-    log_scan("SECTOR STATUS", "No standard Steam Destiny 2 install detected yet");
-    log_info("ADVISORY", "Install Destiny 2 on Steam (App ID: 1085660) anytime");
-    ghost_dialogue(
-        "\"I didn't find Destiny 2 installed yet, Guardian, but don't worry.\n \
-         I'm initializing our standalone transponder anyway. Whenever you\n \
-         install the game, simply re-run this script to link your files.\"",
-    );
-}
-
-pub fn print_step3_backup(backup_path: &str) {
-    step_header(3, 5, "SAFEGUARDING STEAM TELEMETRY CORE");
-    log_ok("BACKUP SECURED", backup_path);
-    ghost_dialogue(
-        "\"I've created an immutable backup of your original steam_api64.dll.\n \
-         Your original game files are 100% safe and can be restored anytime.\"",
-    );
-}
-
-pub fn print_step4_config(config_path: &str) {
-    step_header(4, 5, "INITIALIZING XDG TRANSPONDER & SANDBOX");
-    log_ok("CONFIG DIR", config_path);
-    log_ok("ENTITLEMENTS", "Auto-unlock enabled for all seasons and expansions");
-    log_ok("ENDPOINT", "Bound to local loopback (127.0.0.1:7777)");
-    ghost_dialogue(
-        "\"Writing your offline profile, sandbox settings, and package cache\n \
-         into ~/.config/sunrise. All Vanguard DLC keys are unlocked.\"",
-    );
-}
-
-pub fn print_step5_desktop(desktop_icon: &str, service_name: &str) {
-    step_header(5, 5, "SYSTEM INTEGRATION & WORKSPACE SHORTCUTS");
-    log_ok("APP ICON", "Installed custom vector Ghost icon to icon theme");
-    log_ok("DESKTOP ICON", desktop_icon);
-    log_ok("SYSTEMD SERVICE", service_name);
-    ghost_dialogue(
-        "\"I've placed a launcher shortcut directly on your Desktop and\n \
-         registered a background systemd service for hands-free launch.\"",
     );
 }
 
@@ -126,13 +121,15 @@ pub fn print_proton_box() {
     println!("\x1b[1;33m╚═════════════════════════════════════════════════════════════════════╝\x1b[0m");
 }
 
-pub fn print_epilogue() {
-    print_proton_box();
+pub fn print_epilogue(has_desktop: bool) {
+    if has_desktop {
+        print_proton_box();
+    }
     println!();
     ghost_dialogue(
-        "\"All systems are green, Guardian! The Traveler's light is shining on\n \
-         local loopback. Launch 'sunrise-linux server' whenever you're ready\n \
-         to transmat into the sandbox. I'll see you starside!\"",
+        "\"All selected systems are green, Guardian! The Traveler's light is\n \
+         shining on local loopback. Launch 'sunrise-linux server' whenever\n \
+         you're ready to transmat into the sandbox. I'll see you starside!\"",
     );
     println!();
 }
