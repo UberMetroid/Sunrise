@@ -46,17 +46,9 @@ impl From<UdpOpcode> for u8 {
 
 impl std::fmt::Display for UdpOpcode {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Heartbeat => write!(f, "Heartbeat (0x01)"),
-            Self::PlayerPosition => write!(f, "PlayerPosition (0x02)"),
-            Self::WorldSnapshot => write!(f, "WorldSnapshot (0x03)"),
-            Self::BindAck => write!(f, "BindAck (0x04)"),
-            Self::Unknown(v) => write!(f, "UnknownUdp (0x{:02X})", v),
-        }
+        match self { Self::Heartbeat => write!(f, "Heartbeat (0x01)"), Self::PlayerPosition => write!(f, "PlayerPosition (0x02)"), Self::WorldSnapshot => write!(f, "WorldSnapshot (0x03)"), Self::BindAck => write!(f, "BindAck (0x04)"), Self::Unknown(v) => write!(f, "UnknownUdp (0x{:02X})", v) }
     }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq)]
+}#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct PlayerPosition { pub x: f32, pub y: f32, pub z: f32, pub yaw: f32, pub pitch: f32 }
 impl PlayerPosition {
     pub const WIRE_SIZE: usize = 20;
@@ -87,9 +79,7 @@ impl PlayerPosition {
             pitch: f32::from_le_bytes(source[16..20].try_into().unwrap()),
         })
     }
-}
-
-#[derive(Debug, Clone, PartialEq)]
+}#[derive(Debug, Clone, PartialEq)]
 pub struct WorldSnapshot { pub sequence: u32, pub players: Vec<(u64, PlayerPosition)> }
 impl WorldSnapshot {
     pub fn encode(&self, target: &mut [u8]) -> Result<usize> {
@@ -144,14 +134,9 @@ impl WorldSnapshot {
         }
         Ok(Self { sequence, players })
     }
-}
-
-#[derive(Debug, Clone)]
+}#[derive(Debug, Clone)]
 pub struct UdpPacket { pub opcode: UdpOpcode, pub sequence: u32, pub payload: Vec<u8> }
-impl UdpPacket {
-    pub fn new(opcode: UdpOpcode, sequence: u32, payload: Vec<u8>) -> Self {
-        Self { opcode, sequence, payload }
-    }
+impl UdpPacket { pub fn new(opcode: UdpOpcode, sequence: u32, payload: Vec<u8>) -> Self { Self { opcode, sequence, payload } }
     pub fn encode(&self) -> Result<Vec<u8>> {
         if self.payload.len() > UDP_MAX_PAYLOAD {
             return Err(SunriseError::PayloadTooLarge {

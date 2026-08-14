@@ -12,7 +12,9 @@ use std::process::Command;
 
 use crate::crypto::hash::sha256_hex;
 use crate::error::{Result, SunriseError};
+use crate::installer::steam_locator::search_destiny2_installations;
 use crate::manifest::manifest_store::ManifestStore;
+use crate::state::package_scanner::PackageIndex;
 
 fn verify_downloaded_file(path: &Path, expected_sha256: Option<&str>) -> Result<()> {
     if !path.exists() {
@@ -48,7 +50,7 @@ impl ManifestDownloader {
     pub fn bootstrap_essential_manifest() -> ManifestStore {
         // No copyrighted data embedded. Try local cache first, else empty.
         // Cache lives outside git: ~/Downloads/Destiny 2/Sunrise-manifest/bootstrap_manifest.json
-        // and runtime: ~/.config/sunrise/manifest_cache.json, ~/.config/thanatonaut/manifest_cache.json
+        // and runtime: ~/.config/sunrise/manifest_cache.json
         let cache = ManifestStore::default_cache_path();
         if let Ok(store) = ManifestStore::load_from_disk(&cache) {
             if !store.items.is_empty() {
@@ -60,6 +62,21 @@ impl ManifestDownloader {
         if let Ok(store) = ManifestStore::load_from_disk(dl_cache) {
             if !store.items.is_empty() {
                 return store;
+            }
+        }
+        // Fallback: scan local vault packages so server can boot without Bungie
+        // (counts destinations, no copyrighted names). Uses package_scanner.
+        for inst in search_destiny2_installations() {
+            if let Ok(idx) = PackageIndex::scan_directory(&inst.packages_dir) {
+                if idx.total_packages > 0 {
+                    println!(
+                        "[*] Vault scan: {} packages, {:.1} GB at {} (no manifest cache, using empty manifest for boot)",
+                        idx.total_packages,
+                        idx.total_bytes as f64 / 1_000_000_000.0,
+                        inst.packages_dir.display()
+                    );
+                    break;
+                }
             }
         }
         ManifestStore::new()
