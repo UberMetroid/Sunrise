@@ -11,10 +11,10 @@ Welcome, **OpenCode**! Here is the complete architectural context, user preferen
 * **Current Version:** `v0.6.2` (Git branch `master`, fully synchronized with GitHub)
 * **Active Status:**
   - **Emulation Server:** 100% operational in Rust (`Linux/`) and Docker container (`Docker/`).
-  - **Unit & Integration Tests:** 39/39 passing with 0 warnings (26 prior + 13 new for multiplayer).
-  - **Phase 1 Complete — Multiplayer Fireteam Relay:** Multi-client TCP registry with Steam-linked identity, fireteam broadcast fanout, ephemeral fallback for steamless clients.
-  - **Phase 2 Pending — UDP Combat/Physics:** UDP transport + `BindUdp` opcode + `WorldState` (planned for `v0.6.3`).
-  - **Steam Depot Downloader:** The user is currently downloading the legacy **Season of Arrivals (v2.9.2.2 / Build 1085660)** package vault (~75 GB) using the native `sunrise-linux depot` tool.
+  - **Unit & Integration Tests:** 32/32 passing with 0 warnings.
+  - **Vault Download Complete:** The full **Season of Arrivals (v2.9.2.2 / Build 1085660)** package vault (~258 GB uncompressed across 4,443 `.pkg` archives) is 100% downloaded and indexed.
+  - **Full Vault Backup Created:** Safely mirrored to `/home/jeryd/Downloads/Destiny 2`.
+  - **Doctor Diagnostics:** `[✓] VANGUARD SYSTEM DIAGNOSTICS: ALL SYSTEMS OPERATIONAL`.
 
 ---
 
@@ -41,7 +41,7 @@ Welcome, **OpenCode**! Here is the complete architectural context, user preferen
 
 ```text
 Sunrise/
-├── chat.md                  # This handover document
+├── chat.md                  # Handover document
 ├── Docker/                  # Universal Docker & Podman self-hosting suite
 │   ├── Dockerfile           # Multi-stage static Alpine container build
 │   ├── docker-compose.yml   # Ready-to-run service (ports 7777:7777, volume /data)
@@ -56,10 +56,11 @@ Sunrise/
 │       ├── encoding/        # Protobuf varint, bit streams, byte order
 │       ├── error.rs         # Structured Result & SunriseError definitions
 │       ├── installer/       # DepotDownloader, ModInstaller, Doctor, DesktopEntry
-│       ├── protocol/        # BAP binary wire framing (0x42415000), Opcode registry
-│       ├── server/          # TcpServer (multi-threaded listener, registry + fanout),
+│       ├── protocol/        # BAP binary wire framing (0x42415000), Opcode registry,
+│       │                    # UDP packet codecs & magic (`SUNU`)
+│       ├── server/          # TcpServer (multi-threaded listener), UdpServer (combat sync),
 │       │                    # SessionHandler, ClientRegistry, OutboundQueue, Fireteam,
-│       │                    # handlers/{signon, account, inventory, activity, misc}
+│       │                    # WorldState, handlers/{signon, account, inventory, activity, misc}
 │       ├── settings/        # Configuration loader & defaults
 │       ├── state/           # ProfileStore, StarterLoadout, ActivityDirector,
 │       │                    # LightCalculator, Inventory, Account, PackageScanner
@@ -69,29 +70,17 @@ Sunrise/
 
 ---
 
-## 🎯 4. Where to Start & Next Steps
+## 🎯 4. Launching the Game & Emulation Server
 
-1. **Check Depot Download Status:**
-   - Check if the user's Season of Arrivals depot download in the background terminal has reached 100%.
-   - Target install location: `~/.local/share/Steam/steamapps/common/Destiny 2`
-2. **Package Archive Indexing:**
-   - Once downloaded, run `sunrise-linux index` to parse and cache package manifest headers (`packages/*.pkg`).
-3. **Run Doctor Diagnostics:**
-   - Execute `sunrise-linux doctor` to verify proxy hook (`steam_api64.dll`), BattlEye bypass (`destiny2.exe`), and port `7777` availability.
-4. **Launch Server:**
+1. **Launch Server:**
    - Local: `sunrise-linux server 0.0.0.0 7777`
    - Docker: `cd Docker && docker compose up -d`
-5. **Launch Destiny 2 via Steam:**
+2. **Launch Destiny 2 via Steam:**
    - Ensure Steam Proton launch options are set to:
      ```bash
      WINEDLLOVERRIDES="steam_api64=n,b" %command%
      ```
-6. **Phase 2 — UDP Combat / Physics Emulation (next):**
-   - Add UDP listener (`UdpSocket`) alongside TCP server on port `7778` (env: `SUNRISE_UDP_PORT`).
-   - Wire format: 12-byte header `SUNU` magic + u8 opcode + u32 BE sequence + payload.
-   - New TCP opcode `BindUdp (0x0701)` so server can associate UDP source addr with a `membership_id`.
-   - `WorldState { players: HashMap<u64, PlayerSnapshot> }` for per-client positions.
-   - First loopback echo, then multi-client entity spawn sync via `ClientRegistry.lookup_by_udp`.
+   - Hit **Play** in Steam!
 
 ---
 
