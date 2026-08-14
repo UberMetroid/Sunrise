@@ -1,4 +1,4 @@
-// File: linux/src/installer/depot_downloader.rs
+// File: Thanatonaut/src/installer/depot_downloader.rs
 // Title: Legacy Destiny 2 Depot Downloader & Modular Vault Provisioner
 // Plain English: Downloads core engine binaries (~1.5 GB) and package archives (~75 GB).
 
@@ -7,6 +7,7 @@ use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+use crate::crypto::hash::sha256_hex;
 use crate::error::{Result, SunriseError};
 use crate::installer::ghost_narrative::*;
 use crate::installer::steam_locator::get_home_dir;
@@ -19,6 +20,32 @@ pub const DEPOT_CORE_ID: u32 = 1085661;
 pub const MANIFEST_CORE: &str = "7180122903232116872";
 pub const DEPOT_PACKAGES_ID: u32 = 1085662;
 pub const MANIFEST_PACKAGES: &str = "2210332166360342287";
+
+fn verify_downloaded_file(path: &Path, expected_sha256: Option<&str>) -> Result<()> {
+    if !path.exists() {
+        return Err(SunriseError::FileNotFound(path.display().to_string()));
+    }
+    let meta = fs::metadata(path).map_err(|e| SunriseError::IoError(e.to_string()))?;
+    if meta.len() == 0 {
+        return Err(SunriseError::IoError(format!(
+            "downloaded file empty: {}",
+            path.display()
+        )));
+    }
+    if let Some(expected) = expected_sha256 {
+        let data = fs::read(path).map_err(|e| SunriseError::IoError(e.to_string()))?;
+        let actual = sha256_hex(&data);
+        if actual != expected.to_lowercase() {
+            return Err(SunriseError::IoError(format!(
+                "SHA256 mismatch for {}: expected {}, got {}",
+                path.display(),
+                expected,
+                actual
+            )));
+        }
+    }
+    Ok(())
+}
 
 pub struct DepotDownloader;
 
@@ -51,6 +78,11 @@ impl DepotDownloader {
             ));
         }
 
+        if let Err(e) = verify_downloaded_file(&zip_path, None) {
+            let _ = fs::remove_file(&zip_path);
+            return Err(e);
+        }
+
         let _ = Command::new("unzip")
             .arg("-o")
             .arg(&zip_path)
@@ -60,6 +92,7 @@ impl DepotDownloader {
 
         let _ = fs::remove_file(&zip_path);
         if exe_path.exists() {
+            verify_downloaded_file(&exe_path, None)?;
             let _ = fs::set_permissions(&exe_path, fs::Permissions::from_mode(0o755));
             Ok(exe_path)
         } else {

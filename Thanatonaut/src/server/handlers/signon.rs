@@ -1,4 +1,4 @@
-// File: linux/src/server/handlers/signon.rs
+// File: Thanatonaut/src/server/handlers/signon.rs
 // Title: Signon & BindUdp Handlers
 // Plain English: Handles TCP Signon (Steam ID parsing) and BindUdp (UDP source binding).
 
@@ -77,7 +77,10 @@ pub fn handle_bind_udp(request: &BapFrame, session: &mut SessionHandler) -> Resu
 
     let ip = session.peer_addr.ip();
     let full_addr = std::net::SocketAddr::new(ip, udp_port);
-    session.registry_handle.set_udp_source(Some(full_addr));
+    let membership = session.registry_handle.membership_id;
+    if !session.registry.bind_udp_source(membership, full_addr) {
+        session.registry_handle.set_udp_source(Some(full_addr));
+    }
 
     let envelope = ServiceResponseEnvelope::new(
         request.opcode,

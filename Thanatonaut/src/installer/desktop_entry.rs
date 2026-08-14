@@ -1,4 +1,4 @@
-// File: linux/src/installer/desktop_entry.rs
+// File: Thanatonaut/src/installer/desktop_entry.rs
 // Title: Application Launcher, Icon, Helper Script & systemd Service Generator
 // Plain English: Registers Start Menu entries, systemd daemon service, and auto-start launcher wrapper.
 

@@ -71,7 +71,7 @@ fn run_install(args: &[String]) -> bool {
         if first.packages_dir.exists() {
             if let Ok(idx) = PackageIndex::scan_directory(&first.packages_dir) {
                 let dirs = SunriseDirectories::default_paths();
-                let _ = idx.save_to_cache(&dirs.cache_dir.join("package_index.json"));
+                let _ = idx.save_to_cache(dirs.cache_dir.join("package_index.json"));
                 log_ok("PACKAGES", &format!("Indexed {} package archives in vault", idx.total_packages));
             }
         }
@@ -97,7 +97,7 @@ fn run_install(args: &[String]) -> bool {
                 Ok(dest) => log_ok("PROXY CORE", &format!("Installed hook -> {}", dest.display())),
                 Err(e) => eprintln!("[-] Failed to install proxy hook: {}", e),
             }
-            if let Ok(_) = ModInstaller::backup_and_bypass_launcher(inst) {
+            if ModInstaller::backup_and_bypass_launcher(inst).is_ok() {
                 log_ok("LAUNCHER BYPASS", "Bypassed BattlEye launcher (destiny2.exe targeted directly)");
             }
             ghost_dialogue("\"Translocated Project Sunrise proxy core into bin/x64/steam_api64.dll and bypassed anti-cheat launcher. All game network traffic is now routed to your local server sandbox.\"");
@@ -158,7 +158,7 @@ fn run_index(custom_path: Option<String>) -> bool {
     println!("[*] Scanning package vault: {}", packages_path.display());
     if let Ok(idx) = PackageIndex::scan_directory(&packages_path) {
         let dirs = SunriseDirectories::default_paths();
-        let _ = idx.save_to_cache(&dirs.cache_dir.join("package_index.json"));
+        let _ = idx.save_to_cache(dirs.cache_dir.join("package_index.json"));
         println!("[+] Indexed {} package files (Total Size: {} bytes)", idx.total_packages, idx.total_bytes);
         true
     } else { false }
@@ -178,7 +178,7 @@ fn run_self_tests() -> bool {
 
 fn main() {
     let args: Vec<String> = env::args().collect();
-    let prog = args.get(0).map(|s| s.as_str()).unwrap_or("thanatonaut");
+    let prog = args.first().map(|s| s.as_str()).unwrap_or("thanatonaut");
 
     if args.len() < 2 {
         print_usage(prog);
@@ -212,11 +212,13 @@ fn main() {
             let bind_addr = args.get(2).cloned().unwrap_or(env_addr);
             let port = args.get(3).and_then(|p| p.parse::<u16>().ok()).unwrap_or(env_port);
 
-            let mut config = ServerConfig::default();
-            config.bind_address = bind_addr.clone();
-            config.port = port;
-            config.udp_bind_address = env_udp_bind.clone();
-            config.udp_port = env_udp_port;
+            let config = ServerConfig {
+                bind_address: bind_addr.clone(),
+                port,
+                udp_bind_address: env_udp_bind.clone(),
+                udp_port: env_udp_port,
+                ..Default::default()
+            };
 
             println!("Starting Sunrise Linux Server on {}:{} (UDP {}:{})...", bind_addr, port, env_udp_bind, env_udp_port);
             let server = SunriseTcpServer::new(config);

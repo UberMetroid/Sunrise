@@ -17,6 +17,100 @@ pub struct ProfileStore {
 
 pub const STEAM_ID_NAMESPACE: u64 = 0x53555253_53554E52; // "SUNRSUNR" — deterministic hash namespace
 
+fn allowed_bases() -> Vec<PathBuf> {
+    vec![
+        PathBuf::from("/data"),
+        get_home_dir().join(".config").join("thanatonaut"),
+    ]
+}
+
+fn is_within_allowed(path: &Path) -> bool {
+    if path.starts_with("/tmp") {
+        return true;
+    }
+    for base in allowed_bases() {
+        if path.starts_with(&base) {
+            return true;
+        }
+        if let Ok(canon_base) = fs::canonicalize(&base) {
+            if let Ok(canon_path) = fs::canonicalize(path) {
+                if canon_path.starts_with(&canon_base) {
+                    return true;
+                }
+            }
+            if let Some(parent) = path.parent() {
+                if let Ok(canon_parent) = fs::canonicalize(parent) {
+                    if canon_parent.starts_with(&canon_base) {
+                        return true;
+                    }
+                }
+            }
+        }
+    }
+    false
+}
+
+fn validate_path(path: &Path) -> Result<()> {
+    for comp in path.components() {
+        if matches!(comp, std::path::Component::ParentDir) {
+            return Err(SunriseError::IoError(format!(
+                "path traversal rejected: {}",
+                path.display()
+            )));
+        }
+    }
+    if let Ok(meta) = fs::symlink_metadata(path) {
+        if meta.file_type().is_symlink() {
+            return Err(SunriseError::IoError(format!(
+                "symlink traversal rejected: {}",
+                path.display()
+            )));
+        }
+    }
+    if let Some(parent) = path.parent() {
+        if let Ok(meta) = fs::symlink_metadata(parent) {
+            if meta.file_type().is_symlink() {
+                return Err(SunriseError::IoError(format!(
+                    "symlink traversal rejected: {}",
+                    path.display()
+                )));
+            }
+        }
+        if !is_within_allowed(parent) && !is_within_allowed(path) {
+            return Err(SunriseError::IoError(format!(
+                "path outside allowed base: {}",
+                path.display()
+            )));
+        }
+        if parent.exists() {
+            if let Ok(canon_parent) = fs::canonicalize(parent) {
+                let mut allowed = false;
+                for base in allowed_bases() {
+                    if let Ok(canon_base) = fs::canonicalize(&base) {
+                        if canon_parent.starts_with(&canon_base) {
+                            allowed = true;
+                            break;
+                        }
+                    } else if canon_parent.starts_with(&base) {
+                        allowed = true;
+                        break;
+                    }
+                }
+                if canon_parent.starts_with("/tmp") {
+                    allowed = true;
+                }
+                if !allowed {
+                    return Err(SunriseError::IoError(format!(
+                        "canonical path outside allowed base: {}",
+                        path.display()
+                    )));
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
 impl ProfileStore {
     pub fn default_store() -> Self {
         let path = if Path::new("/data").exists() {
@@ -78,6 +172,7 @@ impl ProfileStore {
     }
 
     pub fn load_account(&self, membership_id: u64) -> Result<AccountState> {
+        validate_path(&self.storage_path)?;
         if !self.storage_path.exists() {
             return Err(SunriseError::FileNotFound(self.storage_path.display().to_string()));
         }
@@ -93,6 +188,7 @@ impl ProfileStore {
     }
 
     pub fn save_account(&self, account: &AccountState) -> Result<()> {
+        validate_path(&self.storage_path)?;
         if let Some(parent) = self.storage_path.parent() {
             let _ = fs::create_dir_all(parent);
         }

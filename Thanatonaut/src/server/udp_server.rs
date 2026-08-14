@@ -1,4 +1,4 @@
-// File: linux/src/server/udp_server.rs
+// File: Thanatonaut/src/server/udp_server.rs
 // Title: UDP Game State Listener & Snapshot Echo
 // RFC Reference: RFC 768 (User Datagram Protocol)
 // Plain English: Listens for UDP packets, updates per-player WorldState, echoes snapshots back.
@@ -114,16 +114,10 @@ fn decode_player_position(payload: &[u8]) -> Option<PlayerPosition> {
 }
 
 fn encode_snapshot_payload(snap: &WorldSnapshot) -> Vec<u8> {
-    let mut out = Vec::with_capacity(4 + snap.players.len() * 28);
-    out.extend_from_slice(&snap.sequence.to_le_bytes());
-    for (id, pos) in &snap.players {
-        out.extend_from_slice(&id.to_le_bytes());
-        out.extend_from_slice(&pos.x.to_le_bytes());
-        out.extend_from_slice(&pos.y.to_le_bytes());
-        out.extend_from_slice(&pos.z.to_le_bytes());
-        out.extend_from_slice(&pos.yaw.to_le_bytes());
-        out.extend_from_slice(&pos.pitch.to_le_bytes());
-    }
+    let per = 8 + PlayerPosition::WIRE_SIZE;
+    let needed = 8 + snap.players.len() * per;
+    let mut out = vec![0u8; needed];
+    snap.encode(&mut out).expect("WorldSnapshot encode");
     out
 }
 
@@ -153,6 +147,6 @@ mod tests {
         let bytes = server.build_snapshot_bytes().expect("snapshot encode");
         let pkt = UdpPacket::decode(&bytes).expect("snapshot decode");
         assert_eq!(pkt.opcode, UdpOpcode::WorldSnapshot);
-        assert_eq!(pkt.payload.len(), 4 + 2 * (8 + 20));
+        assert_eq!(pkt.payload.len(), 8 + 2 * (8 + 20));
     }
 }

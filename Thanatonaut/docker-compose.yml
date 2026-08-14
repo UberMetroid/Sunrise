@@ -9,7 +9,7 @@
 services:
   sunrise-server:
     build:
-      context: ..
+      context: .
       dockerfile: Dockerfile
     image: sunrise-server:latest
     container_name: sunrise-server

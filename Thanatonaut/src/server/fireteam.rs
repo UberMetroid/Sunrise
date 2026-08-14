@@ -1,4 +1,4 @@
-// File: linux/src/server/fireteam.rs
+// File: Thanatonaut/src/server/fireteam.rs
 // Title: Multi-Client Activity Session & Frame Fanout
 // Plain English: Tracks which clients are in which activity; routes broadcast frames to peers.
 

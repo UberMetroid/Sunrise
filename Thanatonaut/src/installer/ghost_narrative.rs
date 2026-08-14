@@ -1,4 +1,4 @@
-// File: linux/src/installer/ghost_narrative.rs
+// File: Thanatonaut/src/installer/ghost_narrative.rs
 // Title: Ghost Companion Narrative & In-Line Terminal Animation Engine
 // Plain English: Renders Ghost ASCII art, clean border dialogue, and in-line animations.
 

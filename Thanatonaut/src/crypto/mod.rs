@@ -1,4 +1,4 @@
-// File: linux/src/crypto/mod.rs
+// File: Thanatonaut/src/crypto/mod.rs
 // Title: Cryptography Module
 // RFC Reference: RFC 5116 (AEAD), RFC 6234 (SHA-256), RFC 2104 (HMAC)
 // Plain English: Provides authenticated symmetric decryption/encryption and cryptographic hashing.

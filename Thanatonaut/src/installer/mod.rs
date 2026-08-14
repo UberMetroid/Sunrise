@@ -1,4 +1,4 @@
-// File: linux/src/installer/mod.rs
+// File: Thanatonaut/src/installer/mod.rs
 // Title: Linux Installer Module
 // Plain English: Coordinates Steam discovery, Destiny 2 detection, and .config setup.
 

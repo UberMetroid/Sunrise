@@ -1,4 +1,4 @@
-// File: linux/src/crypto/hash.rs
+// File: Thanatonaut/src/crypto/hash.rs
 // Title: Cryptographic Hashes & HMAC
 // RFC Reference: RFC 6234 (US Secure Hash Algorithms - SHA-256), RFC 2104 (HMAC)
 // Plain English: Computes SHA-256 digests and HMAC authentication tags for manifests and tokens.

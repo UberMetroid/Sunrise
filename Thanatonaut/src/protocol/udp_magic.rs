@@ -1,4 +1,4 @@
-// File: linux/src/protocol/udp_magic.rs
+// File: Thanatonaut/src/protocol/udp_magic.rs
 // Title: UDP Frame Magic Constant
 // RFC Reference: RFC 768 (User Datagram Protocol)
 // Plain English: "SUNU" 4-byte magic prefix identifying a Sunrise UDP packet.

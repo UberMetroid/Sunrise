@@ -1,4 +1,4 @@
-// File: linux/src/tui/ghost_art.rs
+// File: Thanatonaut/src/tui/ghost_art.rs
 // Title: Animated Ghost ASCII Shell Frames
 // Plain English: Generates rotating radar sweeps and pulsing Ghost shell frames.
 

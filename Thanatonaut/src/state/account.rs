@@ -1,4 +1,4 @@
-// File: linux/src/state/account.rs
+// File: Thanatonaut/src/state/account.rs
 // Title: Player Account and Character Profiles
 // Plain English: Models player membership, character slots (Titan, Hunter, Warlock), and stats.
 

@@ -1,4 +1,4 @@
-// File: linux/src/installer/mod_installer.rs
+// File: Thanatonaut/src/installer/mod_installer.rs
 // Title: Client DLL & Anti-Cheat Launcher Bypass Manager
 // Plain English: Backs up original binaries, installs proxy hook, and bypasses BattlEye launcher.
 
@@ -7,11 +7,38 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+use crate::crypto::hash::sha256_hex;
 use crate::error::{Result, SunriseError};
 use crate::installer::steam_locator::{get_home_dir, Destiny2Paths};
 
 pub const DEFAULT_HOOK_URL: &str =
     "https://github.com/stanuwu/Sunrise/releases/latest/download/steam_api64.dll";
+
+fn verify_downloaded_file(path: &Path, expected_sha256: Option<&str>) -> Result<()> {
+    if !path.exists() {
+        return Err(SunriseError::FileNotFound(path.display().to_string()));
+    }
+    let meta = fs::metadata(path).map_err(|e| SunriseError::IoError(e.to_string()))?;
+    if meta.len() == 0 {
+        return Err(SunriseError::IoError(format!(
+            "downloaded file empty: {}",
+            path.display()
+        )));
+    }
+    if let Some(expected) = expected_sha256 {
+        let data = fs::read(path).map_err(|e| SunriseError::IoError(e.to_string()))?;
+        let actual = sha256_hex(&data);
+        if actual != expected.to_lowercase() {
+            return Err(SunriseError::IoError(format!(
+                "SHA256 mismatch for {}: expected {}, got {}",
+                path.display(),
+                expected,
+                actual
+            )));
+        }
+    }
+    Ok(())
+}
 
 pub struct ModInstaller;
 
@@ -49,7 +76,9 @@ impl ModInstaller {
 
         for path in &candidates {
             if path.exists() {
-                return Ok(path.clone());
+                if let Ok(()) = verify_downloaded_file(path, None) {
+                    return Ok(path.clone());
+                }
             }
         }
 
@@ -76,6 +105,8 @@ impl ModInstaller {
             )));
         }
 
+        verify_downloaded_file(&cache_dll, None)?;
+
         Ok(cache_dll)
     }
 
@@ -87,6 +118,8 @@ impl ModInstaller {
             ));
         }
 
+        verify_downloaded_file(src_dll, None)?;
+
         // Ensure original is backed up first
         Self::backup_original_dll(paths)?;
 
@@ -94,6 +127,8 @@ impl ModInstaller {
         fs::copy(src_dll, &paths.steam_api_dll).map_err(|e| {
             SunriseError::IoError(format!("Failed to install proxy steam_api64.dll: {}", e))
         })?;
+
+        verify_downloaded_file(&paths.steam_api_dll, None)?;
 
         Ok(())
     }

@@ -1,4 +1,4 @@
-// File: linux/src/protocol/envelope.rs
+// File: Thanatonaut/src/protocol/envelope.rs
 // Title: Web Service Envelope Codec
 // RFC Reference: RFC 9110 (HTTP Semantics & Envelope Status Encodings)
 // Plain English: Serializes standard response wrappers with status codes and version stamps.

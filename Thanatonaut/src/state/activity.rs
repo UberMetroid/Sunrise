@@ -1,4 +1,4 @@
-// File: linux/src/state/activity.rs
+// File: Thanatonaut/src/state/activity.rs
 // Title: Activity Matchmaking and Destination State
 // Plain English: Coordinates destination loading, activity hashes, and session lifecycle.
 

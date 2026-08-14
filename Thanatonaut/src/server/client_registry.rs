@@ -131,11 +131,10 @@ impl ClientRegistry {
 
         let mut by_udp = self.by_udp_source.lock().expect("Registry mutex poisoned");
         if let Some(prev) = handle.udp_source() {
-            if prev != source {
-                if matches!(by_udp.get(&prev).copied(), Some(id) if id == membership_id) {
+            if prev != source
+                && matches!(by_udp.get(&prev).copied(), Some(id) if id == membership_id) {
                     by_udp.remove(&prev);
                 }
-            }
         }
         by_udp.retain(|_, v| *v != membership_id);
         by_udp.insert(source, membership_id);

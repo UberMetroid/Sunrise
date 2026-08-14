@@ -1,4 +1,4 @@
-// File: linux/src/state/package_scanner.rs
+// File: Thanatonaut/src/state/package_scanner.rs
 // Title: Game Package Scanner & Manifest Indexer
 // RFC Reference: RFC 8259 (JSON Data Interchange Format)
 // Plain English: Scans Destiny 2 package archives and caches package metadata.

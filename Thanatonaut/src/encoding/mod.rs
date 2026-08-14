@@ -1,4 +1,4 @@
-// File: linux/src/encoding/mod.rs
+// File: Thanatonaut/src/encoding/mod.rs
 // Title: Binary and Wire Encoding Module
 // Plain English: Contains helpers for byte ordering, varints, and bit streams.
 

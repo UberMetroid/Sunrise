@@ -1,4 +1,4 @@
-// File: linux/src/encoding/varint.rs
+// File: Thanatonaut/src/encoding/varint.rs
 // Title: Protobuf Varint Encoding and Decoding
 // Plain English: Reads and writes variable-length integers (1 to 10 bytes).
 // Boundary Safety: Prevents integer overflow and buffer overruns.
@@ -43,6 +43,9 @@ pub fn decode_varint(source: &[u8]) -> Result<(u64, usize)> {
         }
         let val = (byte & 0x7F) as u64;
         if shift >= 64 && val != 0 {
+            return Err(SunriseError::CorruptVarint);
+        }
+        if shift == 63 && val > 1 {
             return Err(SunriseError::CorruptVarint);
         }
         result |= val << shift;

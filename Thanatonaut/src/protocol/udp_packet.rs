@@ -1,4 +1,4 @@
-// File: linux/src/protocol/udp_packet.rs
+// File: Thanatonaut/src/protocol/udp_packet.rs
 // Title: UDP Game State Packet Codec
 // RFC Reference: RFC 768 (User Datagram Protocol)
 // Plain English: PlayerPosition, WorldSnapshot, and UDP opcode codec for combat/physics sync.
@@ -94,12 +94,20 @@ pub struct WorldSnapshot { pub sequence: u32, pub players: Vec<(u64, PlayerPosit
 impl WorldSnapshot {
     pub fn encode(&self, target: &mut [u8]) -> Result<usize> {
         let per = 8 + PlayerPosition::WIRE_SIZE;
-        let needed = 4 + self.players.len() * per;
+        let max_players = UDP_MAX_PAYLOAD / per;
+        if self.players.len() > max_players {
+            return Err(SunriseError::PayloadTooLarge {
+                length: self.players.len(),
+                max: max_players,
+            });
+        }
+        let needed = 8 + self.players.len() * per;
         if target.len() < needed {
             return Err(SunriseError::BufferTooShort { needed, available: target.len() });
         }
-        write_u32_le(&mut target[..4], self.players.len() as u32);
-        let mut off = 4;
+        write_u32_le(&mut target[..4], self.sequence);
+        write_u32_le(&mut target[4..8], self.players.len() as u32);
+        let mut off = 8;
         for (id, pos) in &self.players {
             target[off..off + 8].copy_from_slice(&id.to_le_bytes());
             off += 8;
@@ -109,17 +117,22 @@ impl WorldSnapshot {
         Ok(needed)
     }
     pub fn decode(source: &[u8]) -> Result<Self> {
-        if source.len() < 4 {
-            return Err(SunriseError::BufferTooShort { needed: 4, available: source.len() });
+        if source.len() < 8 {
+            return Err(SunriseError::BufferTooShort { needed: 8, available: source.len() });
         }
-        let count = read_u32_le(&source[..4]).unwrap() as usize;
+        let sequence = read_u32_le(&source[..4]).unwrap();
+        let count = read_u32_le(&source[4..8]).unwrap() as usize;
         let per = 8 + PlayerPosition::WIRE_SIZE;
-        let needed = 4 + count * per;
+        let max_players = UDP_MAX_PAYLOAD / per;
+        if count > max_players {
+            return Err(SunriseError::PayloadTooLarge { length: count, max: max_players });
+        }
+        let needed = 8 + count * per;
         if source.len() < needed {
             return Err(SunriseError::BufferTooShort { needed, available: source.len() });
         }
         let mut players = Vec::with_capacity(count);
-        let mut off = 4;
+        let mut off = 8;
         for _ in 0..count {
             let mut id_bytes = [0u8; 8];
             id_bytes.copy_from_slice(&source[off..off + 8]);
@@ -129,7 +142,7 @@ impl WorldSnapshot {
             off += PlayerPosition::WIRE_SIZE;
             players.push((id, pos));
         }
-        Ok(Self { sequence: 0, players })
+        Ok(Self { sequence, players })
     }
 }
 
@@ -215,16 +228,19 @@ mod tests {
         };
         let mut buf = vec![0u8; 4096];
         let written = snap.encode(&mut buf).expect("encode");
-        assert_eq!(written, 4 + 3 * (8 + 20));
-        let count = read_u32_le(&buf[..4]).unwrap();
+        assert_eq!(written, 8 + 3 * (8 + 20));
+        let seq = read_u32_le(&buf[..4]).unwrap();
+        assert_eq!(seq, 99);
+        let count = read_u32_le(&buf[4..8]).unwrap();
         assert_eq!(count, 3);
-        let id0 = u64::from_le_bytes(buf[4..12].try_into().unwrap());
+        let id0 = u64::from_le_bytes(buf[8..16].try_into().unwrap());
         assert_eq!(id0, 0x0102030405060708);
-        let x0 = f32::from_le_bytes(buf[12..16].try_into().unwrap());
+        let x0 = f32::from_le_bytes(buf[16..20].try_into().unwrap());
         assert_eq!(x0, 1.0);
-        let id1 = u64::from_le_bytes(buf[32..40].try_into().unwrap());
+        let id1 = u64::from_le_bytes(buf[36..44].try_into().unwrap());
         assert_eq!(id1, 0x1112131415161718);
         let decoded = WorldSnapshot::decode(&buf[..written]).expect("decode");
+        assert_eq!(decoded.sequence, snap.sequence);
         assert_eq!(decoded.players, snap.players);
     }
     #[test]

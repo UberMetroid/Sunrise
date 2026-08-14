@@ -1,4 +1,4 @@
-// File: linux/src/server/world_state.rs
+// File: Thanatonaut/src/server/world_state.rs
 // Title: Per-Membership Player Snapshot Store
 // Plain English: Tracks the last-known position of every connected player; snapshots for fanout.
 
@@ -36,7 +36,7 @@ impl WorldState {
         *seq = seq.wrapping_add(1);
         let entries: Vec<(u64, PlayerPosition)> = players
             .iter()
-            .map(|(k, v)| (*k, v.clone()))
+            .map(|(k, v)| (*k, *v))
             .collect();
         WorldSnapshot {
             sequence: *seq,

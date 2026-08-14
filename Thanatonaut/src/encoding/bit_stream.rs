@@ -1,4 +1,4 @@
-// File: linux/src/encoding/bit_stream.rs
+// File: Thanatonaut/src/encoding/bit_stream.rs
 // Title: Bit-level Reader and Writer
 // Plain English: Serializes and deserializes arbitrary bit fields into a byte buffer.
 
@@ -25,7 +25,7 @@ impl<'a> BitWriter<'a> {
             return Err(SunriseError::InvalidBitStream);
         }
         let total_bits_needed = self.bit_cursor + bit_count;
-        let bytes_needed = (total_bits_needed + 7) / 8;
+        let bytes_needed = total_bits_needed.div_ceil(8);
         if bytes_needed > self.buffer.len() {
             return Err(SunriseError::BufferTooShort {
                 needed: bytes_needed,
@@ -46,7 +46,7 @@ impl<'a> BitWriter<'a> {
     }
 
     pub fn finish(self) -> usize {
-        (self.bit_cursor + 7) / 8
+        self.bit_cursor.div_ceil(8)
     }
 
     pub fn total_bits(&self) -> usize {
@@ -72,7 +72,7 @@ impl<'a> BitReader<'a> {
             return Err(SunriseError::InvalidBitStream);
         }
         let total_bits_needed = self.bit_cursor + bit_count;
-        let bytes_needed = (total_bits_needed + 7) / 8;
+        let bytes_needed = total_bits_needed.div_ceil(8);
         if bytes_needed > self.buffer.len() {
             return Err(SunriseError::BufferTooShort {
                 needed: bytes_needed,

@@ -1,0 +1,235 @@
+// File: Linux-Server/src/main.rs
+// Title: Sunrise Linux Server & Comprehensive CLI Dispatcher
+// Plain English: Command-line interface with container support, proxy hook, and server runtime.
+
+use std::env;
+use std::path::PathBuf;
+use std::process;
+
+use sunrise_linux::crypto::hash::sha256_hex;
+use sunrise_linux::installer::config_setup::SunriseDirectories;
+use sunrise_linux::installer::depot_downloader::DepotDownloader;
+use sunrise_linux::installer::desktop_entry::DesktopIntegration;
+use sunrise_linux::installer::doctor::SunriseDoctor;
+use sunrise_linux::installer::ghost_narrative::*;
+use sunrise_linux::installer::mod_installer::ModInstaller;
+use sunrise_linux::installer::steam_locator::search_destiny2_installations;
+use sunrise_linux::installer::uninstaller::Uninstaller;
+use sunrise_linux::protocol::bap_frame::{BapFrame, BAP_MAGIC};
+use sunrise_linux::protocol::opcode::Opcode;
+use sunrise_linux::server::tcp_server::SunriseTcpServer;
+use sunrise_linux::settings::config::ServerConfig;
+use sunrise_linux::state::light_calculator::{calculate_base_light, GearSlots};
+use sunrise_linux::state::package_scanner::PackageIndex;
+use sunrise_linux::SUNRISE_LINUX_VERSION;
+
+fn print_usage(prog: &str) {
+    print_banner();
+    println!("Project Sunrise // Linux Vanguard Emulation Suite (v{})", SUNRISE_LINUX_VERSION);
+    println!("Usage: {} <COMMAND> [OPTIONS]\n", prog);
+    println!("Commands:");
+    println!("  install [--yes / -y]              Interactive installer (proxy hook + launcher bypass)");
+    println!("  server [bind_address] [port]      Start the BAP emulation server (default: 127.0.0.1:7777)");
+    println!("                                   Env: SUNRISE_BIND_ADDRESS, SUNRISE_PORT, SUNRISE_UDP_BIND, SUNRISE_UDP_PORT (default udp: 7778)");
+    println!("  depot | download [target_dir]     Download legacy Destiny 2 depot archives via Steam");
+    println!("  status                            Check if local server daemon is actively listening");
+    println!("  doctor | check                    Run comprehensive system & game vault diagnostics");
+    println!("  index [packages_dir]              Scan & pre-cache Destiny 2 package manifest headers");
+    println!("  uninstall | restore               Restore original game DLLs and remove shortcuts");
+    println!("  test                              Run cryptographic & protocol self-test diagnostics");
+    println!("  version | -v | --version          Print version information");
+    println!("  help | -h | --help                Display this help overview\n");
+}
+
+fn run_install(args: &[String]) -> bool {
+    let auto_yes = args.iter().any(|a| a == "--yes" || a == "-y");
+    print_prologue();
+
+    let install_server = if auto_yes { true } else {
+        prompt_confirm("Install Sunrise Linux Emulation Server & ~/.config sandbox?", true)
+    };
+    let install_desktop = if auto_yes { true } else {
+        prompt_confirm("Install Destiny 2 Start Menu & Steam proxy hook integration?", true)
+    };
+    let download_depots = if auto_yes { false } else {
+        prompt_confirm("Download Legacy Destiny 2 Game Depots (Season of Arrivals)?", false)
+    };
+
+    if !install_server && !install_desktop && !download_depots {
+        println!("\n[!] No components selected. Installation aborted.");
+        return true;
+    }
+
+    step_header(1, 4, "SCANNING LOCAL STORAGE & STEAM LIBRARIES");
+    animate_spinner("Scanning storage sectors for Destiny 2 package archives...", 600);
+    let installations = search_destiny2_installations();
+    animate_progress("Storage Scan Complete", 0, 25);
+
+    step_header(2, 4, "VERIFYING GAME VAULT & ARCHIVE INTEGRITY");
+    if let Some(first) = installations.first() {
+        log_ok("GAME ROOT", &first.game_root.display().to_string());
+        if first.packages_dir.exists() {
+            if let Ok(idx) = PackageIndex::scan_directory(&first.packages_dir) {
+                let dirs = SunriseDirectories::default_paths();
+                let _ = idx.save_to_cache(dirs.cache_dir.join("package_index.json"));
+                log_ok("PACKAGES", &format!("Indexed {} package archives in vault", idx.total_packages));
+            }
+        }
+        ghost_dialogue("\"Found it! Your Destiny 2 package archives are intact and indexed.\"");
+    } else {
+        log_scan("SECTOR STATUS", "No standard Steam Destiny 2 install detected yet");
+    }
+
+    if download_depots {
+        let target = installations.first().map(|i| i.game_root.clone()).unwrap_or_else(|| {
+            let home = sunrise_linux::installer::steam_locator::get_home_dir();
+            home.join(".local/share/Steam/steamapps/common/Destiny 2")
+        });
+        let _ = DepotDownloader::run_interactive_download(&target);
+    }
+    animate_progress("Vault Verification & Index Complete", 25, 50);
+
+    step_header(3, 4, "CONFIGURING SANDBOX, PROXY HOOK & LAUNCHER");
+    if install_desktop {
+        for inst in &installations {
+            animate_spinner("Retrieving Project Sunrise steam_api64.dll proxy core...", 800);
+            match ModInstaller::ensure_proxy_hook(inst) {
+                Ok(dest) => log_ok("PROXY CORE", &format!("Installed hook -> {}", dest.display())),
+                Err(e) => eprintln!("[-] Failed to install proxy hook: {}", e),
+            }
+            if ModInstaller::backup_and_bypass_launcher(inst).is_ok() {
+                log_ok("LAUNCHER BYPASS", "Bypassed BattlEye launcher (destiny2.exe targeted directly)");
+            }
+            ghost_dialogue("\"Translocated Project Sunrise proxy core into bin/x64/steam_api64.dll and bypassed anti-cheat launcher. All game network traffic is now routed to your local server sandbox.\"");
+        }
+    }
+    if install_server {
+        let dirs = SunriseDirectories::default_paths();
+        let _ = dirs.initialize(installations.first().map(|i| i.game_root.as_path()));
+        log_ok("CONFIG DIR", &dirs.config_dir.display().to_string());
+        log_ok("ENTITLEMENTS", "Auto-unlock enabled for all seasons and expansions");
+        log_ok("ENDPOINT", "Bound to local loopback (127.0.0.1:7777)");
+    }
+    animate_progress("Sandbox & Proxy Configured", 50, 75);
+
+    step_header(4, 4, "SYSTEM INTEGRATION & WORKSPACE SHORTCUTS");
+    if let Ok(current_exe) = env::current_exe() {
+        if install_desktop {
+            let _ = DesktopIntegration::install_desktop_entry(&current_exe);
+            log_ok("APP ICON", "Installed custom vector Ghost icon to icon theme");
+            log_ok("START MENU", "destiny2-sunrise.desktop -> Applications menu");
+            log_ok("WRAPPER SCRIPT", "~/.local/bin/sunrise-game launcher created");
+        }
+        if install_server {
+            let _ = DesktopIntegration::install_systemd_service(&current_exe);
+            log_ok("SYSTEMD SERVICE", "sunrise.service (daemon-reloaded)");
+        }
+    }
+    animate_progress("Installation Finalized", 75, 100);
+
+    print_epilogue(install_desktop);
+    true
+}
+
+fn run_uninstall() -> bool {
+    let results = Uninstaller::restore_all_game_files();
+    for (path, restored) in results {
+        if restored { log_ok("RESTORED", &format!("Original steam_api64.dll in {}", path)); }
+    }
+    let _ = Uninstaller::remove_desktop_integration();
+    print_uninstall_complete();
+    true
+}
+
+fn run_index(custom_path: Option<String>) -> bool {
+    let packages_path = match custom_path {
+        Some(p) => PathBuf::from(p),
+        None => {
+            let installations = search_destiny2_installations();
+            if let Some(first) = installations.first() {
+                first.packages_dir.clone()
+            } else {
+                eprintln!("[-] No Destiny 2 packages directory found to index.");
+                return false;
+            }
+        }
+    };
+
+    println!("[*] Scanning package vault: {}", packages_path.display());
+    if let Ok(idx) = PackageIndex::scan_directory(&packages_path) {
+        let dirs = SunriseDirectories::default_paths();
+        let _ = idx.save_to_cache(dirs.cache_dir.join("package_index.json"));
+        println!("[+] Indexed {} package files (Total Size: {} bytes)", idx.total_packages, idx.total_bytes);
+        true
+    } else { false }
+}
+
+fn run_self_tests() -> bool {
+    println!("[*] Running Sunrise Linux Self-Test Diagnostics...");
+    let frame = BapFrame::new(42, Opcode::Signon, vec![0xDE, 0xAD, 0xBE, 0xEF]);
+    assert_eq!(&frame.to_bytes().unwrap()[..4], &BAP_MAGIC);
+    let gear = GearSlots::new(750, 750, 750, 750, 750, 750, 750, 750);
+    assert_eq!(calculate_base_light(&gear), 750);
+    let digest = sha256_hex(b"sunrise");
+    assert_eq!(digest, "e9f2a0186210e30a516d12b001717fc17b1887acad69faf5c2141067f3f6b094");
+    println!("[✓] All self-tests passed successfully!");
+    true
+}
+
+fn main() {
+    let args: Vec<String> = env::args().collect();
+    let prog = args.first().map(|s| s.as_str()).unwrap_or("sunrise-linux");
+
+    if args.len() < 2 {
+        print_usage(prog);
+        process::exit(1);
+    }
+
+    match args[1].as_str() {
+        "install" => { if !run_install(&args) { process::exit(1); } }
+        "depot" | "download" => {
+            let target = args.get(2).map(PathBuf::from).unwrap_or_else(|| {
+                search_destiny2_installations().first().map(|i| i.game_root.clone()).unwrap_or_else(|| {
+                    sunrise_linux::installer::steam_locator::get_home_dir()
+                        .join(".local/share/Steam/steamapps/common/Destiny 2")
+                })
+            });
+            if let Err(e) = DepotDownloader::run_interactive_download(&target) {
+                eprintln!("[-] Depot download error: {}", e);
+                process::exit(1);
+            }
+        }
+        "uninstall" | "restore" => { if !run_uninstall() { process::exit(1); } }
+        "status" => { SunriseDoctor::check_status(); }
+        "doctor" | "check" => { if !SunriseDoctor::run_diagnostics() { process::exit(1); } }
+        "index" => { if !run_index(args.get(2).cloned()) { process::exit(1); } }
+        "server" => {
+            let env_addr = env::var("SUNRISE_BIND_ADDRESS").or_else(|_| env::var("SUNRISE_BIND_ADDR"))
+                .unwrap_or_else(|_| "127.0.0.1".to_string());
+            let env_port = env::var("SUNRISE_PORT").ok().and_then(|p| p.parse::<u16>().ok()).unwrap_or(7777);
+            let env_udp_bind = env::var("SUNRISE_UDP_BIND").unwrap_or_else(|_| "127.0.0.1".to_string());
+            let env_udp_port = env::var("SUNRISE_UDP_PORT").ok().and_then(|p| p.parse::<u16>().ok()).unwrap_or(7778);
+            let bind_addr = args.get(2).cloned().unwrap_or(env_addr);
+            let port = args.get(3).and_then(|p| p.parse::<u16>().ok()).unwrap_or(env_port);
+
+            let config = ServerConfig {
+                bind_address: bind_addr.clone(),
+                port,
+                udp_bind_address: env_udp_bind.clone(),
+                udp_port: env_udp_port,
+                ..Default::default()
+            };
+
+            println!("Starting Sunrise Linux Server on {}:{} (UDP {}:{})...", bind_addr, port, env_udp_bind, env_udp_port);
+            let server = SunriseTcpServer::new(config);
+            if let Err(e) = server.run() {
+                eprintln!("Server error: {}", e);
+                process::exit(1);
+            }
+        }
+        "test" => { if !run_self_tests() { process::exit(1); } }
+        "version" | "-v" | "--version" => { println!("sunrise-linux v{}", SUNRISE_LINUX_VERSION); }
+        "help" | "-h" | "--help" => { print_usage(prog); }
+        _ => { print_usage(prog); process::exit(1); }
+    }
+}

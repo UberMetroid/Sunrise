@@ -1,4 +1,4 @@
-// File: linux/src/installer/uninstaller.rs
+// File: Thanatonaut/src/installer/uninstaller.rs
 // Title: Sunrise Linux Uninstaller & Restore Manager
 // Plain English: Restores original Steam API binaries and cleans up desktop/systemd entries.
 

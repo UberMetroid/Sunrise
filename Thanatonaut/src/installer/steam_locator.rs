@@ -1,4 +1,4 @@
-// File: linux/src/installer/steam_locator.rs
+// File: Thanatonaut/src/installer/steam_locator.rs
 // Title: Steam & Destiny 2 Directory Locator
 // Plain English: Locates Steam installation directories and Destiny 2 game paths on Linux.
 

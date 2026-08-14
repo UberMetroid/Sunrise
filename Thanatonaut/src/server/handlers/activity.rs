@@ -1,4 +1,4 @@
-// File: linux/src/server/handlers/activity.rs
+// File: Thanatonaut/src/server/handlers/activity.rs
 // Title: Activity & Fireteam Handlers
 // Plain English: QueueZ, ActivityMatchmaking, ActivityJoin/Leave, FireteamBroadcast fanout.
 

@@ -1,4 +1,4 @@
-// File: linux/src/server/outbound_queue.rs
+// File: Thanatonaut/src/server/outbound_queue.rs
 // Title: Per-Connection Outbound Frame Queue
 // Plain English: Buffers unsolicited BAP frames for a single client; drained between reads.
 

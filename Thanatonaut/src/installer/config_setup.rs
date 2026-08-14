@@ -1,4 +1,4 @@
-// File: linux/src/installer/config_setup.rs
+// File: Thanatonaut/src/installer/config_setup.rs
 // Title: XDG Base Directory Configuration Setup
 // RFC Reference: RFC 8259 (JSON Interchange Format)
 // Plain English: Initializes the ~/.config/thanatonaut/ directory structure and default config file.

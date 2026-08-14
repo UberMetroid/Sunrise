@@ -1,4 +1,4 @@
-// File: linux/src/server/handlers/misc.rs
+// File: Thanatonaut/src/server/handlers/misc.rs
 // Title: Default Opcode Catch-All Handler
 // Plain English: Returns a success envelope with empty payload for any unmapped opcode.
 

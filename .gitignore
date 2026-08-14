@@ -8,3 +8,5 @@
 *.sln.docstates
 *.aps
 *.log
+manifest_cache.json
+bootstrap_manifest.json

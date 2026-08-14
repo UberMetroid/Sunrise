@@ -1,4 +1,4 @@
-// File: linux/src/server/tcp_server.rs
+// File: Thanatonaut/src/server/tcp_server.rs
 // Title: TCP BAP Server with Multi-Client Registry & UDP Game State Listener
 // RFC Reference: RFC 793 (Transmission Control Protocol), RFC 768 (UDP)
 // Plain English: Listens on TCP for BAP frames and on UDP for player state; shares one registry.

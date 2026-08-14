@@ -1,4 +1,4 @@
-// File: linux/src/crypto/aes_gcm.rs
+// File: Thanatonaut/src/crypto/aes_gcm.rs
 // Title: Authenticated Encryption with Associated Data (AEAD) AES-GCM
 // RFC Reference: RFC 5116 Section 5.1 (AEAD_AES_128_GCM)
 // Plain English: Encrypts and decrypts frames with 128-bit key, 96-bit nonce, and 128-bit tag.
@@ -40,7 +40,7 @@ pub fn encrypt_aes_gcm(
 
     let ciphertext_with_tag = cipher
         .encrypt(gcm_nonce, payload)
-        .map_err(|_| SunriseError::DecryptionFailed)?;
+        .map_err(|e| SunriseError::IoError(format!("AES-GCM encrypt failed: {}", e)))?;
 
     if ciphertext_with_tag.len() < TAG_SIZE {
         return Err(SunriseError::DecryptionFailed);

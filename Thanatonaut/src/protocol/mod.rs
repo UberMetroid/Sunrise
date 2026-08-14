@@ -1,4 +1,4 @@
-// File: linux/src/protocol/mod.rs
+// File: Thanatonaut/src/protocol/mod.rs
 // Title: Protocol Framing & Envelopes
 // RFC Reference: RFC 793 (TCP Stream Framing), RFC 9110 (Web Service Framing)
 // Plain English: Handles BAP framing, opcode translation, and service envelopes.

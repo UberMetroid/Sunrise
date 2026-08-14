@@ -1,4 +1,4 @@
-// File: linux/src/tui/app_state.rs
+// File: Thanatonaut/src/tui/app_state.rs
 // Title: Ratatui Installer State Machine with User Choices
 // Plain English: Manages component toggles, progress percentage, and Ghost transcript lines.
 
@@ -32,6 +32,12 @@ pub struct TuiAppState {
     pub install_desktop_shortcut: bool,
     pub selected_option: usize,
     pub should_exit: bool,
+}
+
+impl Default for TuiAppState {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl TuiAppState {

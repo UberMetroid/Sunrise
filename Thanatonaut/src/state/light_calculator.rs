@@ -1,4 +1,4 @@
-// File: linux/src/state/light_calculator.rs
+// File: Thanatonaut/src/state/light_calculator.rs
 // Title: Light and Power Level Calculator
 // Plain English: Computes overall gear power by averaging the 8 active equipment slots.
 
@@ -19,6 +19,7 @@ pub struct GearSlots {
 }
 
 impl GearSlots {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         kinetic: u32,
         energy: u32,

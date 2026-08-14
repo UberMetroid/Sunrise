@@ -1,4 +1,4 @@
-// File: linux/src/error.rs
+// File: Thanatonaut/src/error.rs
 // Title: Sunrise Error Types
 // Plain English: Defines all failure cases for Sunrise Linux components.
 // Fail-Closed: Every error is explicit and typed to prevent torn state.

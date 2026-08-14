@@ -1,4 +1,4 @@
-// File: linux/src/tui/views.rs
+// File: Thanatonaut/src/tui/views.rs
 // Title: Ratatui Interface Views & Animated HUD Layout
 // Plain English: Renders interactive component checkboxes, animated Ghost radar, and progress gauge.
 

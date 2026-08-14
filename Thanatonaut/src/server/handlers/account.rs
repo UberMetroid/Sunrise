@@ -1,4 +1,4 @@
-// File: linux/src/server/handlers/account.rs
+// File: Thanatonaut/src/server/handlers/account.rs
 // Title: Account Summary Handler
 // Plain English: Returns the serialized AccountState JSON as the response payload.
 

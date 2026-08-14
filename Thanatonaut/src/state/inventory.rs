@@ -1,4 +1,4 @@
-// File: linux/src/state/inventory.rs
+// File: Thanatonaut/src/state/inventory.rs
 // Title: Inventory and Item Bucket State
 // Plain English: Models item definitions, item instances, and inventory containers.
 

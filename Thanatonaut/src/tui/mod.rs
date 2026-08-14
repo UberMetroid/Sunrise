@@ -1,4 +1,4 @@
-// File: linux/src/tui/mod.rs
+// File: Thanatonaut/src/tui/mod.rs
 // Title: Ratatui Animated TUI Installer Runner
 // Plain English: Handles keyboard navigation, component toggling, and installation lifecycle.
 

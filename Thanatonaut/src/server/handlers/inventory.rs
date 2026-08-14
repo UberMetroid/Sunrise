@@ -1,4 +1,4 @@
-// File: linux/src/server/handlers/inventory.rs
+// File: Thanatonaut/src/server/handlers/inventory.rs
 // Title: Inventory & Equipment Handlers
 // Plain English: CharacterInventory, EquipItem, TransferItem, SetItemLockState, SetSocketSelection.
 

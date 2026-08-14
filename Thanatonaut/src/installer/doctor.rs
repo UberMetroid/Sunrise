@@ -1,4 +1,4 @@
-// File: linux/src/installer/doctor.rs
+// File: Thanatonaut/src/installer/doctor.rs
 // Title: Sunrise Linux Doctor & Comprehensive Health Diagnostics
 // Plain English: Inspects system health, game archives, proxy hook status, PATH, and port availability.
 
