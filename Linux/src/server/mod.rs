@@ -5,6 +5,13 @@
 
 pub mod session_handler;
 pub mod tcp_server;
+pub mod outbound_queue;
+pub mod client_registry;
+pub mod fireteam;
+pub mod handlers;
 
 pub use session_handler::*;
 pub use tcp_server::*;
+pub use outbound_queue::*;
+pub use client_registry::*;
+pub use fireteam::*;

@@ -16,6 +16,10 @@ pub enum Opcode {
     SetItemLockState,
     SetSocketSelection,
     ActivityMatchmaking,
+    ActivityJoin,
+    ActivityLeave,
+    FireteamBroadcast,
+    BindUdp,
     Unknown(u16),
 }
 
@@ -32,6 +36,10 @@ impl From<u16> for Opcode {
             0x0504 => Self::SetItemLockState,
             0x0505 => Self::SetSocketSelection,
             0x0601 => Self::ActivityMatchmaking,
+            0x0602 => Self::ActivityJoin,
+            0x0603 => Self::ActivityLeave,
+            0x0604 => Self::FireteamBroadcast,
+            0x0701 => Self::BindUdp,
             other => Self::Unknown(other),
         }
     }
@@ -50,6 +58,10 @@ impl From<Opcode> for u16 {
             Opcode::SetItemLockState => 0x0504,
             Opcode::SetSocketSelection => 0x0505,
             Opcode::ActivityMatchmaking => 0x0601,
+            Opcode::ActivityJoin => 0x0602,
+            Opcode::ActivityLeave => 0x0603,
+            Opcode::FireteamBroadcast => 0x0604,
+            Opcode::BindUdp => 0x0701,
             Opcode::Unknown(val) => val,
         }
     }
@@ -68,6 +80,10 @@ impl fmt::Display for Opcode {
             Self::SetItemLockState => write!(f, "SetItemLockState (0x0504)"),
             Self::SetSocketSelection => write!(f, "SetSocketSelection (0x0505)"),
             Self::ActivityMatchmaking => write!(f, "ActivityMatchmaking (0x0601)"),
+            Self::ActivityJoin => write!(f, "ActivityJoin (0x0602)"),
+            Self::ActivityLeave => write!(f, "ActivityLeave (0x0603)"),
+            Self::FireteamBroadcast => write!(f, "FireteamBroadcast (0x0604)"),
+            Self::BindUdp => write!(f, "BindUdp (0x0701)"),
             Self::Unknown(val) => write!(f, "UnknownOpcode (0x{:04X})", val),
         }
     }

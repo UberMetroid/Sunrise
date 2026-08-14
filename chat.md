@@ -8,10 +8,12 @@ Welcome, **OpenCode**! Here is the complete architectural context, user preferen
 
 * **Repository:** `https://github.com/UberMetroid/Sunrise` (Fork of `stanuwu/Sunrise`)
 * **Local Workspace:** `/home/jeryd/Projects/UberMetroid/Sunrise`
-* **Current Version:** `v0.6.1` (Git branch `master`, fully synchronized with GitHub)
+* **Current Version:** `v0.6.2` (Git branch `master`, fully synchronized with GitHub)
 * **Active Status:**
   - **Emulation Server:** 100% operational in Rust (`Linux/`) and Docker container (`Docker/`).
-  - **Unit & Integration Tests:** 26/26 passing with 0 warnings.
+  - **Unit & Integration Tests:** 39/39 passing with 0 warnings (26 prior + 13 new for multiplayer).
+  - **Phase 1 Complete — Multiplayer Fireteam Relay:** Multi-client TCP registry with Steam-linked identity, fireteam broadcast fanout, ephemeral fallback for steamless clients.
+  - **Phase 2 Pending — UDP Combat/Physics:** UDP transport + `BindUdp` opcode + `WorldState` (planned for `v0.6.3`).
   - **Steam Depot Downloader:** The user is currently downloading the legacy **Season of Arrivals (v2.9.2.2 / Build 1085660)** package vault (~75 GB) using the native `sunrise-linux depot` tool.
 
 ---
@@ -55,7 +57,9 @@ Sunrise/
 │       ├── error.rs         # Structured Result & SunriseError definitions
 │       ├── installer/       # DepotDownloader, ModInstaller, Doctor, DesktopEntry
 │       ├── protocol/        # BAP binary wire framing (0x42415000), Opcode registry
-│       ├── server/          # TcpServer (multi-threaded listener), SessionHandler
+│       ├── server/          # TcpServer (multi-threaded listener, registry + fanout),
+│       │                    # SessionHandler, ClientRegistry, OutboundQueue, Fireteam,
+│       │                    # handlers/{signon, account, inventory, activity, misc}
 │       ├── settings/        # Configuration loader & defaults
 │       ├── state/           # ProfileStore, StarterLoadout, ActivityDirector,
 │       │                    # LightCalculator, Inventory, Account, PackageScanner
@@ -82,9 +86,12 @@ Sunrise/
      ```bash
      WINEDLLOVERRIDES="steam_api64=n,b" %command%
      ```
-6. **Future Server Roadmap:**
-   - **UDP Combat / Physics Emulation:** Implement basic UDP loopback listener for player movement and entity spawn sync.
-   - **Multiplayer Fireteam Relay:** Allow multiple connected clients to route packets to each other in the same activity session.
+6. **Phase 2 — UDP Combat / Physics Emulation (next):**
+   - Add UDP listener (`UdpSocket`) alongside TCP server on port `7778` (env: `SUNRISE_UDP_PORT`).
+   - Wire format: 12-byte header `SUNU` magic + u8 opcode + u32 BE sequence + payload.
+   - New TCP opcode `BindUdp (0x0701)` so server can associate UDP source addr with a `membership_id`.
+   - `WorldState { players: HashMap<u64, PlayerSnapshot> }` for per-client positions.
+   - First loopback echo, then multi-client entity spawn sync via `ClientRegistry.lookup_by_udp`.
 
 ---
 
